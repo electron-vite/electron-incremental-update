@@ -153,6 +153,6 @@ export async function createElectronApp(
 }
 
 /**
- * @alias {@link createElectronApp}
+ * @deprecated Use {@link createElectronApp} instead
  */
-export const initApp = createElectronApp
+export const initApp: typeof createElectronApp = createElectronApp

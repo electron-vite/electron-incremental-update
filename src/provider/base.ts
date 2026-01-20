@@ -9,23 +9,31 @@ export abstract class BaseProvider implements IProvider {
   /**
    * @inheritdoc
    */
-  public isLowerVersion = defaultIsLowerVersion
+  public isLowerVersion: IProvider['isLowerVersion'] = defaultIsLowerVersion
   /**
    * @inheritdoc
    */
-  public verifySignaure = defaultVerifySignature
+  public verifySignaure: IProvider['verifySignaure'] = defaultVerifySignature
   /**
    * @inheritdoc
    */
-  public unzipFile = defaultUnzipFile
+  public unzipFile: IProvider['unzipFile'] = defaultUnzipFile
 
   /**
    * @inheritdoc
    */
-  public abstract downloadJSON(name: string, versionPath: string, signal: AbortSignal): Promise<UpdateJSONWithURL>
+  public abstract downloadJSON(
+    name: string,
+    versionPath: string,
+    signal: AbortSignal
+  ): Promise<UpdateJSONWithURL>
 
   /**
    * @inheritdoc
    */
-  public abstract downloadAsar(info: UpdateInfoWithURL, signal: AbortSignal, onDownloading?: (info: DownloadingInfo) => void,): Promise<Buffer>
+  public abstract downloadAsar(
+    info: UpdateInfoWithURL,
+    signal: AbortSignal,
+    onDownloading?: (info: DownloadingInfo) => void
+  ): Promise<Buffer>
 }

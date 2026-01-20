@@ -39,3 +39,6 @@ function run(css: string): void {
   // Cleanup
   window.onbeforeunload = () => observer.disconnect()
 }
+
+declare const __CSS__: string
+run(__CSS__)

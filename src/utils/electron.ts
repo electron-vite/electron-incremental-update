@@ -25,13 +25,13 @@ declare const __EIU_IS_ESM__: boolean
 /**
  * Compile time dev check
  */
-export const isDev = __EIU_IS_DEV__
+export const isDev: boolean = __EIU_IS_DEV__
 
-export const isWin = process.platform === 'win32'
+export const isWin: boolean = process.platform === 'win32'
 
-export const isMac = process.platform === 'darwin'
+export const isMac: boolean = process.platform === 'darwin'
 
-export const isLinux = process.platform === 'linux'
+export const isLinux: boolean = process.platform === 'linux'
 
 /**
  * Get joined path of `${electron.app.name}.asar` (not `app.asar`)
@@ -160,10 +160,9 @@ export function setPortableDataPath(dirName: string = 'data', create: boolean = 
 }
 
 /**
- * @deprecated
- * @alias {@link setPortableDataPath}
+ * @deprecated Use {@link setPortableDataPath} instead
  */
-export const setPortableAppDataPath = setPortableDataPath
+export const setPortableAppDataPath: typeof setPortableDataPath = setPortableDataPath
 
 /**
  * Load `process.env.VITE_DEV_SERVER_URL` when dev, else load html file
@@ -211,7 +210,7 @@ export function beautifyDevTools(win: BrowserWindow, options: BeautifyDevToolsOp
     if (scrollbar) {
       css += __SCROLLBAR_CSS__
     }
-    const js = `${__JS__};run(\`${css}\`)`
+    const js = `const __CSS__='${css}';${__JS__}`
     await win?.webContents.devToolsWebContents?.executeJavaScript(js)
   })
 }
