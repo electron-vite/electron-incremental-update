@@ -253,6 +253,7 @@ export async function electronWithUpdater(
     )
     log.info(`Build entry to '${entryOutputDirPath}'`, { timestamp: true })
     await postBuild?.({
+      isBuild,
       getPathFromEntryOutputDir(...paths) {
         return path.join(entryOutputDirPath, ...paths)
       },

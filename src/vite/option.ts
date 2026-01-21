@@ -206,6 +206,10 @@ export interface BuildEntryOption {
    */
   postBuild?: (args: {
     /**
+     * Whether is in build mode
+     */
+    isBuild: boolean
+    /**
      * Get path from `entryOutputDirPath`
      */
     getPathFromEntryOutputDir: (...paths: string[]) => string
