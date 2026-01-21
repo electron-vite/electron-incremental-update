@@ -1,9 +1,9 @@
 import type { DownloadingInfo } from '../provider/types'
 import type { UpdateJSON } from './version'
 import type { Arrayable } from '@subframe7536/type-utils'
-import type { IncomingMessage } from 'electron'
+import type { ClientRequest, IncomingMessage } from 'electron'
 
-import electron from 'electron'
+import electron, { app, net } from 'electron'
 
 import { isUpdateJSON } from './version'
 
@@ -24,11 +24,11 @@ export function getHeader(headers: Record<string, Arrayable<string>>, key: any):
 export async function downloadUtil<T>(
   url: string,
   headers: Record<string, any>,
-  onResponse: (req: Electron.ClientRequest, resp: IncomingMessage, resolve: (data: T) => void, reject: (e: any) => void) => void,
+  onResponse: (req: ClientRequest, resp: IncomingMessage, resolve: (data: T) => void, reject: (e: any) => void) => void,
 ): Promise<T> {
-  await electron.app.whenReady()
+  await app.whenReady()
   return new Promise((resolve, reject) => {
-    const request = electron.net.request({
+    const request = net.request({
       cache: 'no-cache',
       headers,
       method: 'GET',

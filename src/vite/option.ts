@@ -3,9 +3,7 @@ import type { BytecodeOptions } from './bytecode'
 import type { DistinguishedName } from './key'
 import type { Promisable } from '@subframe7536/type-utils'
 import type { InlineConfig } from 'vite'
-import type { ElectronOptions } from 'vite-plugin-electron'
-
-import { builtinModules } from 'node:module'
+import type { ElectronOptions } from './electron'
 
 import { defaultSignature } from '../utils/crypto'
 import { defaultVersionJsonGenerator } from '../utils/version'
@@ -26,7 +24,7 @@ interface ViteOverride {
   vite?: ElectronOptions['vite'] & {
     build?: {
       outDir: never
-      rollupOptions?: {
+      rolldownOptions?: {
         output?: {
           dir: never
         }
@@ -88,7 +86,7 @@ export interface ElectronWithUpdaterOptions {
    */
   main: {
     /**
-     * Shortcut of `build.rollupOptions.input`
+     * Shortcut of `build.rolldownOptions.input`
      */
     files: NonNullable<ElectronOptions['entry']>
     /**
@@ -108,9 +106,9 @@ export interface ElectronWithUpdaterOptions {
    */
   preload: {
     /**
-     * Shortcut of `build.rollupOptions.input`.
+     * Shortcut of `build.rolldownOptions.input`.
      *
-     * Preload scripts may contain Web assets, so use the `build.rollupOptions.input` instead `build.lib.entry`.
+     * Preload scripts may contain Web assets, so use the `build.rolldownOptions.input` instead `build.lib.entry`.
      */
     files: NonNullable<ElectronOptions['entry']>
   } & ViteOverride
@@ -174,13 +172,13 @@ export interface BuildEntryOption {
    */
   ignoreDynamicRequires?: boolean
   /**
-   * `external` option in `build.rollupOptions`,
+   * `external` option in `build.rolldownOptions`,
    * default is node built-in modules or native modules.
    *
    * If is in dev and {@link postBuild} is not setup, will also
    * external `dependencies` in `package.json`
    */
-  external?: NonNullable<NonNullable<InlineConfig['build']>['rollupOptions']>['external']
+  external?: NonNullable<NonNullable<InlineConfig['build']>['rolldownOptions']>['external']
   /**
    * Custom options for `vite` build
    * ```ts
@@ -191,7 +189,7 @@ export interface BuildEntryOption {
    *     minify,
    *     outDir: entryOutputDirPath,
    *     commonjsOptions: { ignoreDynamicRequires },
-   *     rollupOptions: { external },
+   *     rolldownOptions: { external },
    *   },
    *   define,
    * }
@@ -228,7 +226,7 @@ export interface BuildEntryOption {
       skipIfExist?: boolean
     }) => void
     /**
-     * Copy specified modules to entry output dir, just like `external` option in rollup
+     * Copy specified modules to entry output dir, just like `external` option in rolldown
      */
     copyModules: (options: {
       /**
@@ -396,7 +394,7 @@ export function parseOptions(
         /^node:.*/,
         /.*\.(node|dll|dylib|so)$/,
         'original-fs',
-        ...builtinModules,
+        'electron',
         ...(isBuild || postBuild)
           ? []
           : Object.keys('dependencies' in pkg ? pkg.dependencies as object : {}),

@@ -1,6 +1,6 @@
 /* eslint-disable no-template-curly-in-string */
 /* eslint-disable no-eval */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 
 import { convertArrowFunctionAndTemplate, convertLiteral, decodeFn, obfuscateString } from '../src/vite/bytecode/utils'
 

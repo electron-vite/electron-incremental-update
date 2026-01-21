@@ -1,7 +1,7 @@
 import { readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path/posix'
 
-import { afterAll, describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it } from 'bun:test'
 
 import { aesDecrypt, aesEncrypt, defaultSignature, defaultVerifySignature, hashBuffer } from '../src/utils/crypto'
 import { generateKeyPair } from '../src/vite/key'

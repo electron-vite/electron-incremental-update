@@ -1,9 +1,9 @@
-import type { BrowserWindow } from 'electron'
+import { BrowserWindow } from 'electron'
 
 import fs from 'node:fs'
 import path from 'node:path'
 
-import electron from 'electron'
+import electron, { app } from 'electron'
 
 /**
  * type only entry dir path, transformed by vite's define
@@ -39,7 +39,7 @@ export const isLinux: boolean = process.platform === 'linux'
  * If is in dev, **always** return `'DEV.asar'`
  */
 export function getPathFromAppNameAsar(...paths: string[]): string {
-  return isDev ? 'DEV.asar' : path.join(path.dirname(electron.app.getAppPath()), `${electron.app.name}.asar`, ...paths)
+  return isDev ? 'DEV.asar' : path.join(path.dirname(app.getAppPath()), `${app.name}.asar`, ...paths)
 }
 
 /**
@@ -53,7 +53,7 @@ export function getAppVersion(): string {
  * Get entry version
  */
 export function getEntryVersion(): string {
-  return electron.app.getVersion()
+  return app.getVersion()
 }
 
 /**
@@ -89,8 +89,8 @@ export async function importNative<T = any>(moduleName: string): Promise<T> {
  * Restarts the Electron app.
  */
 export function restartApp(): void {
-  electron.app.relaunch()
-  electron.app.quit()
+  app.relaunch()
+  app.quit()
 }
 
 /**
@@ -99,7 +99,7 @@ export function restartApp(): void {
  */
 export function setAppUserModelId(id?: string): void {
   if (isWin) {
-    electron.app.setAppUserModelId(id ?? `org.${electron.app.name}`)
+    app.setAppUserModelId(id ?? `org.${app.name}`)
   }
 }
 
@@ -111,7 +111,7 @@ export function setAppUserModelId(id?: string): void {
 export function disableHWAccForWin7(): void {
   // eslint-disable-next-line ts/no-require-imports
   if (!__EIU_IS_ESM__ && require('node:os').release().startsWith('6.1')) {
-    electron.app.disableHardwareAcceleration()
+    app.disableHardwareAcceleration()
   }
 }
 
@@ -120,7 +120,7 @@ export function disableHWAccForWin7(): void {
  * @param window brwoser window to show
  */
 export function singleInstance(window?: BrowserWindow): void {
-  electron.app.on('second-instance', () => {
+  app.on('second-instance', () => {
     if (window) {
       window.show()
       if (window.isMinimized()) {
@@ -139,11 +139,11 @@ export function singleInstance(window?: BrowserWindow): void {
  * @param create whether to create dir, default to `true`
  */
 export function setPortableDataPath(dirName: string = 'data', create: boolean = true): void {
-  if (electron.app.isReady()) {
+  if (app.isReady()) {
     throw new Error('Portable app data dir must be setup before app is ready')
   }
 
-  const portableDir = path.join(path.dirname(electron.app.getPath('exe')), dirName)
+  const portableDir = path.join(path.dirname(app.getPath('exe')), dirName)
 
   if (create) {
     if (!fs.existsSync(portableDir)) {
@@ -156,7 +156,7 @@ export function setPortableDataPath(dirName: string = 'data', create: boolean = 
     throw new Error('Portable app data dir does not exists')
   }
 
-  electron.app.setPath('userData', portableDir)
+  app.setPath('userData', portableDir)
 }
 
 /**
@@ -220,7 +220,7 @@ export function beautifyDevTools(win: BrowserWindow, options: BeautifyDevToolsOp
  */
 export function getPathFromMain(...paths: string[]): string {
   return isDev
-    ? path.join(electron.app.getAppPath(), __EIU_ELECTRON_DIST_PATH__, 'main', ...paths)
+    ? path.join(app.getAppPath(), __EIU_ELECTRON_DIST_PATH__, 'main', ...paths)
     : getPathFromAppNameAsar('main', ...paths)
 }
 /**
@@ -229,7 +229,7 @@ export function getPathFromMain(...paths: string[]): string {
  */
 export function getPathFromPreload(...paths: string[]): string {
   return isDev
-    ? path.join(electron.app.getAppPath(), __EIU_ELECTRON_DIST_PATH__, 'preload', ...paths)
+    ? path.join(app.getAppPath(), __EIU_ELECTRON_DIST_PATH__, 'preload', ...paths)
     : getPathFromAppNameAsar('preload', ...paths)
 }
 
@@ -239,7 +239,7 @@ export function getPathFromPreload(...paths: string[]): string {
  */
 export function getPathFromPublic(...paths: string[]): string {
   return isDev
-    ? path.join(electron.app.getAppPath(), 'public', ...paths)
+    ? path.join(app.getAppPath(), 'public', ...paths)
     : getPathFromAppNameAsar('renderer', ...paths)
 }
 
@@ -248,7 +248,7 @@ export function getPathFromPublic(...paths: string[]): string {
  * @param paths rest paths
  */
 export function getPathFromEntryAsar(...paths: string[]): string {
-  return path.join(electron.app.getAppPath(), __EIU_ENTRY_DIST_PATH__, ...paths)
+  return path.join(app.getAppPath(), __EIU_ENTRY_DIST_PATH__, ...paths)
 }
 
 /**
@@ -264,7 +264,7 @@ export function reloadOnPreloadScriptChanged(): void {
   if (isDev) {
     process.on('message', (msg) => {
       if (msg === 'electron-vite&type=hot-reload') {
-        for (const window of electron.BrowserWindow.getAllWindows()) {
+        for (const window of BrowserWindow.getAllWindows()) {
           window.reload()
         }
       }

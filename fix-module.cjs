@@ -1,3 +1,4 @@
+console.log('DEPRECATED')
 const { writeFileSync, mkdirSync } = require('node:fs')
 const { relative, join } = require('node:path/posix')
 

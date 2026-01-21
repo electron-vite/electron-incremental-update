@@ -4,7 +4,7 @@ import type { Promisable } from '@subframe7536/type-utils'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import electron from 'electron'
+import electron, { app } from 'electron'
 
 import { getPathFromAppNameAsar, isDev } from '../utils/electron'
 import { Updater } from './updater'
@@ -112,8 +112,8 @@ export async function createElectronApp(
 
   const {
     mainPath = isDev
-      ? path.join(electron.app.getAppPath(), __EIU_ELECTRON_DIST_PATH__, 'main', __EIU_MAIN_FILE__)
-      : path.join(path.dirname(electron.app.getAppPath()), __EIU_ASAR_BASE_NAME__, 'main', __EIU_MAIN_FILE__),
+      ? path.join(app.getAppPath(), __EIU_ELECTRON_DIST_PATH__, 'main', __EIU_MAIN_FILE__)
+      : path.join(path.dirname(app.getAppPath()), __EIU_ASAR_BASE_NAME__, 'main', __EIU_MAIN_FILE__),
     updater,
     onInstall = defaultOnInstall,
     beforeStart,
@@ -148,7 +148,7 @@ export async function createElectronApp(
   } catch (error) {
     logger?.error('startup error, exit', error)
     onStartError?.(error, logger)
-    electron.app.quit()
+    app.quit()
   }
 }
 

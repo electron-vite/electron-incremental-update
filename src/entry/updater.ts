@@ -16,7 +16,7 @@ import type {
 import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 
-import electron from 'electron'
+import electron, { app } from 'electron'
 
 import {
   getAppVersion,
@@ -121,7 +121,7 @@ export class Updater<T extends UpdateInfoWithExtraVersion = UpdateInfoWithExtraV
     try {
       const result = format === 'json'
         ? await this.provider!.downloadJSON(
-            electron.app.name,
+            app.name,
             __EIU_VERSION_PATH__,
             this.controller.signal,
           )

@@ -6,9 +6,9 @@ import type { InlineConfig } from 'vite'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import Asar from '@electron/asar'
+import { createPackage } from '@electron/asar'
 import { mergeConfig } from 'vite'
-import { build } from 'vite-plugin-electron'
+import { build } from './electron'
 
 import { isUpdateJSON } from '../utils/version'
 import { bytecodePlugin } from './bytecode'
@@ -26,7 +26,7 @@ export async function buildAsar({
 }: BuildAsarOption): Promise<Buffer> {
   fs.renameSync(rendererDistPath, path.join(electronDistPath, 'renderer'))
   fs.writeFileSync(path.join(electronDistPath, 'version'), version)
-  await Asar.createPackage(electronDistPath, asarOutputPath)
+  await createPackage(electronDistPath, asarOutputPath)
   const buf = await generateGzipFile(fs.readFileSync(asarOutputPath))
   fs.writeFileSync(gzipPath, buf)
   log.info(`Build update asar to '${gzipPath}' [${readableSize(buf.length)}]`, { timestamp: true })
@@ -106,8 +106,8 @@ export async function buildEntry(
         sourcemap,
         minify,
         outDir: entryOutputDirPath,
-        commonjsOptions: { ignoreDynamicRequires },
-        rollupOptions: { external },
+        // commonjsOptions: { ignoreDynamicRequires },
+        rolldownOptions: { external },
       },
       define,
     }, overrideViteOptions ?? {}),

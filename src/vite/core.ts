@@ -2,7 +2,7 @@ import type { ElectronWithUpdaterOptions, PKG } from './option'
 import type { AnyFunction } from '@subframe7536/type-utils'
 import type { ChildProcessWithoutNullStreams, StdioOptions } from 'node:child_process'
 import type { BuildOptions, InlineConfig, PluginOption } from 'vite'
-import type { ElectronSimpleOptions } from 'vite-plugin-electron/simple'
+import type { ElectronSimpleOptions } from './electron/simple'
 
 import fs from 'node:fs'
 import path from 'node:path'
@@ -10,9 +10,9 @@ import path from 'node:path'
 import { isCI } from 'ci-info'
 import { getPackageInfoSync, loadPackageJSON } from 'local-pkg'
 import { mergeConfig, normalizePath } from 'vite'
-import { startup } from 'vite-plugin-electron'
-import { notBundle } from 'vite-plugin-electron/plugin'
-import ElectronSimple from 'vite-plugin-electron/simple'
+import { startup } from './electron'
+import { notBundle } from './electron/plugin'
+import ElectronSimple from './electron/simple'
 
 import { buildAsar, buildEntry, buildUpdateJson } from './build'
 import { bytecodePlugin } from './bytecode'
@@ -66,7 +66,7 @@ export async function filterErrorMessageStartup(
   args: Parameters<StartupFn>[0],
   filter: (msg: string) => boolean,
 ): Promise<void> {
-  // https://github.com/electron-vite/vite-plugin-electron/pull/283
+  // https://github.com/electron-vite/./electron/pull/283
   // reserve file descriptor 3 for Chromium; put Node IPC on file descriptor 4
   const stdio: StdioOptions = process.platform === 'linux'
     ? ['inherit', 'pipe', 'pipe', 'ignore', 'ipc']
@@ -131,7 +131,7 @@ function parseVersionPath(versionPath: string): string {
 }
 
 /**
- * Base on `vite-plugin-electron/simple`
+ * Base on `./electron/simple`
  * - integrate with updater
  * - no `renderer` config
  * - remove old output file
@@ -280,7 +280,7 @@ export async function electronWithUpdater(
 
   let isInit = false
 
-  const rollupOptions: BuildOptions['rollupOptions'] = {
+  const rolldownOptions: BuildOptions['rolldownOptions'] = {
     external,
     treeshake: true,
   }
@@ -299,7 +299,7 @@ export async function electronWithUpdater(
           await args.startup()
         }
       },
-      vite: mergeConfig<InlineConfig, InlineConfig>(
+      vite: mergeConfig(
         {
           plugins: [
             !isBuild && useNotBundle && notBundle(),
@@ -310,16 +310,16 @@ export async function electronWithUpdater(
             sourcemap,
             minify,
             outDir: `${buildAsarOption.electronDistPath}/main`,
-            rollupOptions,
+            rolldownOptions,
           },
           define,
-        },
+        } satisfies InlineConfig,
         _main.vite ?? {},
       ),
     },
     preload: {
       input: _preload.files,
-      vite: mergeConfig<InlineConfig, InlineConfig>(
+      vite: mergeConfig(
         {
           plugins: [
             bytecodeOptions && bytecodePlugin('preload', bytecodeOptions),
@@ -345,10 +345,10 @@ export async function electronWithUpdater(
             sourcemap: sourcemap ? 'inline' : undefined,
             minify,
             outDir: `${buildAsarOption.electronDistPath}/preload`,
-            rollupOptions,
+            rolldownOptions,
           },
           define,
-        },
+        } satisfies InlineConfig,
         _preload.vite ?? {},
       ),
     },
@@ -381,7 +381,6 @@ export async function electronWithUpdater(
                 await _main.onstart({
                   startup,
                   reload: () => {
-                    // @ts-expect-error fxxk
                     if (process.electronApp) {
                       (server.hot || server.ws).send({ type: 'full-reload' })
                       startup.send('electron-vite&type=hot-reload')

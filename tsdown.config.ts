@@ -47,6 +47,8 @@ export default defineConfig([
     },
     format: ['esm', 'cjs'],
     dts: { oxc: true },
+    exports: true,
+    external: 'electron',
     define: {
       __FONT_CSS__: JSON.stringify(fontCSS?.replace(/\n/g, '') || ''),
       __SCROLLBAR_CSS__: JSON.stringify(scrollbarCSS?.replace(/\n/g, '') || ''),
@@ -58,8 +60,8 @@ export default defineConfig([
       vite: './src/vite/index.ts',
     },
     format: 'esm',
-    dts: { resolve: true },
-    treeshake: true,
+    dts: { oxc: true },
+    exports: true,
     external: ['electron', 'vite'],
   },
 ])

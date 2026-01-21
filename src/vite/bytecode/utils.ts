@@ -14,7 +14,7 @@ export const electronModule: {
   version: string | undefined
   rootPath: string
 } = getPackageInfoSync('electron')!
-export const electronMajorVersion = parseVersion(electronModule.version!).major
+export const electronMajorVersion: number = parseVersion(electronModule.version!).major
 export const useStrict = '\'use strict\';'
 export const bytecodeModuleLoader = '__loader__.js'
 
@@ -53,7 +53,7 @@ export function toRelativePath(filename: string, importer: string): string {
 
 const logErr = (...args: any[]): void => bytecodeLog.error(args.join(' '), { timestamp: true })
 
-export function compileToBytecode(code: string, electronPath = getElectronPath()): Promise<Buffer> {
+export function compileToBytecode(code: string, electronPath: string = getElectronPath()): Promise<Buffer> {
   let data = Buffer.from([])
 
   const bytecodePath = getBytecodeCompilerPath()
@@ -97,7 +97,7 @@ export function convertArrowFunctionAndTemplate(code: string): { code: string, m
 }
 
 export const decodeFn = ';function _0xstr_(a,b){return String.fromCharCode.apply(0,a.map(function(x){return x-b}))};'
-export function obfuscateString(input: string, offset = ~~(Math.random() * 16) + 1): string {
+export function obfuscateString(input: string, offset: number = ~~(Math.random() * 16) + 1): string {
   const hexArray = input.split('').map(c => `0x${(c.charCodeAt(0) + offset).toString(16)}`)
   return `_0xstr_([${hexArray.join(',')}],${offset})`
 }

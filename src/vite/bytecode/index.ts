@@ -178,7 +178,8 @@ export function bytecodePlugin(
                     break
                   }
                   const moduleInfo = this.getModuleInfo(moduleId)
-                  if (moduleInfo && !moduleInfo.isExternal) {
+                  // if (moduleInfo && !moduleInfo.isExternal) {
+                  if (moduleInfo) {
                     const { importers, dynamicImporters } = moduleInfo
                     for (const importerId of importers) {
                       idsToHandle.add(importerId)
