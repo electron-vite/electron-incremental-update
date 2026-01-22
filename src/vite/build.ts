@@ -8,12 +8,11 @@ import path from 'node:path'
 
 import { createPackage } from '@electron/asar'
 import { mergeConfig } from 'vite'
-import { build } from './electron'
+import { build } from './electron/core'
 
 import { isUpdateJSON } from '../utils/version'
 import { bytecodePlugin } from './bytecode'
 import { log } from './constant'
-import { esm } from './esm'
 import { readableSize } from './utils'
 
 export async function buildAsar({
@@ -99,15 +98,19 @@ export async function buildEntry(
     },
     vite: mergeConfig<InlineConfig, InlineConfig>({
       plugins: [
-        isESM && esm(),
         bytecodeOptions && bytecodePlugin('main', bytecodeOptions),
       ],
       build: {
         sourcemap,
         minify,
         outDir: entryOutputDirPath,
-        // commonjsOptions: { ignoreDynamicRequires },
-        rolldownOptions: { external },
+        rolldownOptions: {
+          external,
+          output: {
+            format: isESM ? 'esm' : 'cjs',
+            dynamicImportInCjs: !ignoreDynamicRequires
+          }
+        },
       },
       define,
     }, overrideViteOptions ?? {}),

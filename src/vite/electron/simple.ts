@@ -1,5 +1,5 @@
 import { type Plugin, type UserConfig, mergeConfig } from 'vite'
-import electron, { type ElectronOptions } from '.'
+import electron, { type ElectronOptions } from './core'
 import { type RolldownOptions } from './utils'
 import { loadPackageJSON } from 'local-pkg'
 

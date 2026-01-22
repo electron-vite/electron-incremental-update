@@ -3,7 +3,7 @@ import type { UpdateJSON } from './version'
 import type { Arrayable } from '@subframe7536/type-utils'
 import type { ClientRequest, IncomingMessage } from 'electron'
 
-import electron, { app, net } from 'electron'
+import { app, net } from 'electron'
 
 import { isUpdateJSON } from './version'
 

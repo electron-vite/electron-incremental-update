@@ -10,14 +10,13 @@ import path from 'node:path'
 import { isCI } from 'ci-info'
 import { getPackageInfoSync, loadPackageJSON } from 'local-pkg'
 import { mergeConfig, normalizePath } from 'vite'
-import { startup } from './electron'
+import { startup } from './electron/core'
 import { notBundle } from './electron/plugin'
 import ElectronSimple from './electron/simple'
 
 import { buildAsar, buildEntry, buildUpdateJson } from './build'
 import { bytecodePlugin } from './bytecode'
 import { bytecodeLog, id, log } from './constant'
-import { esm } from './esm/index'
 import { parseOptions } from './option'
 import { copyAndSkipIfExist } from './utils'
 
@@ -281,11 +280,6 @@ export async function electronWithUpdater(
 
   let isInit = false
 
-  const rolldownOptions: BuildOptions['rolldownOptions'] = {
-    external,
-    treeshake: true,
-  }
-
   const electronPluginOptions: ElectronSimpleOptions = {
     main: {
       entry: _main.files,
@@ -305,13 +299,17 @@ export async function electronWithUpdater(
           plugins: [
             !isBuild && useNotBundle && notBundle(),
             bytecodeOptions && bytecodePlugin('main', bytecodeOptions),
-            isESM && esm(),
           ],
           build: {
             sourcemap,
             minify,
             outDir: `${buildAsarOption.electronDistPath}/main`,
-            rolldownOptions,
+            rolldownOptions: {
+              external,
+              output: {
+                format: isESM ? 'esm' : 'cjs'
+              }
+            },
           },
           define,
         } satisfies InlineConfig,
@@ -324,7 +322,6 @@ export async function electronWithUpdater(
         {
           plugins: [
             bytecodeOptions && bytecodePlugin('preload', bytecodeOptions),
-            isESM && esm(),
             {
               name: `${id}-build`,
               enforce: 'post',
@@ -346,7 +343,9 @@ export async function electronWithUpdater(
             sourcemap: sourcemap ? 'inline' : undefined,
             minify,
             outDir: `${buildAsarOption.electronDistPath}/preload`,
-            rolldownOptions,
+            rolldownOptions: {
+              external
+            },
           },
           define,
         } satisfies InlineConfig,

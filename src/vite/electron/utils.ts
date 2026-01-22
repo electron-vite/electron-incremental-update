@@ -11,7 +11,7 @@ import {
   mergeConfig,
 } from 'vite'
 import { loadPackageJSONSync } from 'local-pkg'
-import type { ElectronOptions } from '.'
+import type { ElectronOptions } from './core'
 
 export interface PidTree {
   pid: number

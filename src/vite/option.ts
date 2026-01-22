@@ -3,7 +3,7 @@ import type { BytecodeOptions } from './bytecode'
 import type { DistinguishedName } from './key'
 import type { Promisable } from '@subframe7536/type-utils'
 import type { InlineConfig } from 'vite'
-import type { ElectronOptions } from './electron'
+import type { ElectronOptions } from './electron/core'
 
 import { defaultSignature } from '../utils/crypto'
 import { defaultVersionJsonGenerator } from '../utils/version'

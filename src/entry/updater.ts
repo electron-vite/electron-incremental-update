@@ -16,7 +16,7 @@ import type {
 import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 
-import electron, { app } from 'electron'
+import { app } from 'electron'
 
 import {
   getAppVersion,
