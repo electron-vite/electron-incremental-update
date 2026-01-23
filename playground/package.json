@@ -1,0 +1,9 @@
+{
+  "name": "test",
+  "version": "0.0.1",
+  "main": "./dist-entry/entry.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  }
+}

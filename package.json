@@ -56,6 +56,7 @@
   "scripts": {
     "dev": "tsdown --watch",
     "build": "tsdown",
+    "play": "cd ./playground && vite",
     "release": "pnpm test && pnpm run build && bumpp --all && npm publish",
     "test": "bun test",
     "test:dev": "bun test --watch",
@@ -83,11 +84,11 @@
     "@types/bun": "^1.3.6",
     "bumpp": "^10.4.0",
     "electron": "39.2.7",
-    "tsdown": "0.19.0",
+    "tsdown": "^0.20.0",
     "typescript": "^5.9.3",
-    "vite": "^8.0.0-beta.8"
+    "vite": "^8.0.0-beta.9"
   },
   "overrides": {
-    "vite": "^8.0.0-beta.8"
+    "vite": "^8.0.0-beta.9"
   }
 }

@@ -47,6 +47,7 @@ export default defineConfig([
     },
     format: ['esm', 'cjs'],
     dts: { oxc: true },
+    inlineOnly: ['@subframe7536/type-utils'],
     exports: true,
     external: ['electron'],
     define: {
@@ -61,6 +62,7 @@ export default defineConfig([
     },
     format: 'esm',
     dts: { oxc: true },
+    inlineOnly: ['@subframe7536/type-utils'],
     exports: true,
     external: ['electron', 'vite'],
   },
