@@ -1,6 +1,5 @@
 import fs from 'node:fs'
 import path from 'node:path'
-
 import { generate } from 'selfsigned'
 
 import { log } from './constant'
@@ -55,7 +54,7 @@ export async function generateKeyPair(
   fs.writeFileSync(certPath, cert.replace(/\r\n?/g, '\n'))
 }
 
-export type GetKeysOption = {
+export interface GetKeysOption {
   privateKeyPath: string
   certPath: string
   keyLength: number
@@ -69,7 +68,7 @@ export async function parseKeys({
   certPath,
   subject,
   days,
-}: GetKeysOption): Promise<{ privateKey: string; cert: string} > {
+}: GetKeysOption): Promise<{ privateKey: string; cert: string }> {
   const keysDir = path.dirname(privateKeyPath)
   let privateKey = process.env.UPDATER_PK
   let cert = process.env.UPDATER_CERT

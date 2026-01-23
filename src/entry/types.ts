@@ -1,16 +1,9 @@
 import type { IProvider } from '../provider/types'
 import type { UpdateInfo } from '../utils/version'
 
-export type UpdaterErrorCode
-  = | 'ERR_DOWNLOAD'
-    | 'ERR_VALIDATE'
-    | 'ERR_PARAM'
-    | 'ERR_NETWORK'
+export type UpdaterErrorCode = 'ERR_DOWNLOAD' | 'ERR_VALIDATE' | 'ERR_PARAM' | 'ERR_NETWORK'
 
-export type UpdaterUnavailableCode
-  = | 'UNAVAILABLE_ERROR'
-    | 'UNAVAILABLE_DEV'
-    | 'UNAVAILABLE_VERSION'
+export type UpdaterUnavailableCode = 'UNAVAILABLE_ERROR' | 'UNAVAILABLE_DEV' | 'UNAVAILABLE_VERSION'
 
 export class UpdaterError extends Error {
   public code: UpdaterErrorCode

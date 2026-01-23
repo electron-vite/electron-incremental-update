@@ -1,5 +1,6 @@
-import type { UpdateInfo } from '../utils/version'
 import type { Promisable } from '@subframe7536/type-utils'
+
+import type { UpdateInfo } from '../utils/version'
 
 export type UpdateInfoWithURL = UpdateInfo & { url: string }
 
@@ -43,7 +44,11 @@ export interface IProvider {
    * @param versionPath normalized version path in project
    * @param signal abort signal
    */
-  downloadJSON: (name: string, versionPath: string, signal: AbortSignal) => Promise<UpdateJSONWithURL>
+  downloadJSON: (
+    name: string,
+    versionPath: string,
+    signal: AbortSignal,
+  ) => Promise<UpdateJSONWithURL>
   /**
    * Download update asar buffer
    * @param updateInfo existing update info
@@ -74,7 +79,12 @@ export interface IProvider {
    * @param signature signature
    * @param cert certificate
    */
-  verifySignaure: (buffer: Buffer, version: string, signature: string, cert: string) => Promisable<boolean>
+  verifySignaure: (
+    buffer: Buffer,
+    version: string,
+    signature: string,
+    cert: string,
+  ) => Promisable<boolean>
 }
 
 export type URLHandler = (url: URL) => Promisable<URL | string | undefined | null>

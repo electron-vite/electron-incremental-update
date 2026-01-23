@@ -30,9 +30,11 @@ It use 2 asar file structure for updates:
 ```sh
 npm install -D electron-incremental-update
 ```
+
 ```sh
 yarn add -D electron-incremental-update
 ```
+
 ```sh
 pnpm add -D electron-incremental-update
 ```
@@ -113,16 +115,18 @@ export default defineConfig(async ({ command }) => {
         },
         updater: {
           // options
-        }
+        },
       }),
     ],
-    server: process.env.VSCODE_DEBUG && (() => {
-      const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)
-      return {
-        host: url.hostname,
-        port: +url.port,
-      }
-    })(),
+    server:
+      process.env.VSCODE_DEBUG &&
+      (() => {
+        const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)
+        return {
+          host: url.hostname,
+          port: +url.port,
+        }
+      })(),
   }
 })
 ```
@@ -145,14 +149,16 @@ export default defineElectronConfig({
     // options
   },
   renderer: {
-    server: process.env.VSCODE_DEBUG && (() => {
-      const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)
-      return {
-        host: url.hostname,
-        port: +url.port,
-      }
-    })(),
-  }
+    server:
+      process.env.VSCODE_DEBUG &&
+      (() => {
+        const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)
+        return {
+          host: url.hostname,
+          port: +url.port,
+        }
+      })(),
+  },
 })
 ```
 
@@ -181,9 +187,7 @@ module.exports = {
     'dist-entry',
   ],
   npmRebuild: false,
-  asarUnpack: [
-    '**/*.{node,dll,dylib,so}',
-  ],
+  asarUnpack: ['**/*.{node,dll,dylib,so}'],
   directories: {
     output: 'release',
   },
@@ -264,7 +268,7 @@ updater.provider = new GitHubProvider({
     url.hostname = 'mirror.ghproxy.com'
     url.pathname = `https://github.com${url.pathname}`
     return url
-  }
+  },
 })
 ```
 
@@ -314,7 +318,7 @@ const plugin = electronWithUpdater({
         })
         // for @napi-rs/image
         const startStr = '@napi-rs+image-'
-        const fileName = readdirSync('./node_modules/.pnpm').find(p => p.startsWith(startStr))!
+        const fileName = readdirSync('./node_modules/.pnpm').find((p) => p.startsWith(startStr))!
         const archName = fileName.substring(startStr.length).split('@')[0]
         copyToEntryOutputDir({
           from: `./node_modules/.pnpm/${fileName}/node_modules/@napi-rs/image-${archName}/image.${archName}.node`,
@@ -333,12 +337,14 @@ in `electron/native/db.ts`
 import Database from 'better-sqlite3'
 import { getPathFromEntryAsar } from 'electron-incremental-update/utils'
 
-const db = new Database(':memory:', { nativeBinding: getPathFromEntryAsar('./better_sqlite3.node') })
+const db = new Database(':memory:', {
+  nativeBinding: getPathFromEntryAsar('./better_sqlite3.node'),
+})
 
 export function test(): void {
   db.exec(
-    'DROP TABLE IF EXISTS employees; '
-    + 'CREATE TABLE IF NOT EXISTS employees (name TEXT, salary INTEGER)',
+    'DROP TABLE IF EXISTS employees; ' +
+      'CREATE TABLE IF NOT EXISTS employees (name TEXT, salary INTEGER)',
   )
 
   db.prepare('INSERT INTO employees VALUES (:n, :s)').run({
@@ -374,7 +380,7 @@ module.exports = {
     'dist-entry',
     // exclude all dependencies in electron-builder config
     '!node_modules/**',
-  ]
+  ],
 }
 ```
 
@@ -597,11 +603,7 @@ function downloadUtil<T>(
   url: string,
   headers: Record<string, any>,
   signal: AbortSignal,
-  onResponse: (
-    resp: IncomingMessage,
-    resolve: (data: T) => void,
-    reject: (e: any) => void
-  ) => void
+  onResponse: (resp: IncomingMessage, resolve: (data: T) => void, reject: (e: any) => void) => void,
 ): Promise<T>
 /**
  * Default function to download json and parse to UpdateJson
@@ -614,7 +616,7 @@ function defaultDownloadJSON<T>(
   url: string,
   headers: Record<string, any>,
   signal: AbortSignal,
-  resolveData?: ResolveDataFn
+  resolveData?: ResolveDataFn,
 ): Promise<T>
 /**
  * Default function to download json and parse to UpdateJson
@@ -625,7 +627,7 @@ function defaultDownloadJSON<T>(
 function defaultDownloadUpdateJSON(
   url: string,
   headers: Record<string, any>,
-  signal: AbortSignal
+  signal: AbortSignal,
 ): Promise<UpdateJSON>
 /**
  * Default function to download asar buffer,
@@ -639,7 +641,7 @@ function defaultDownloadAsar(
   url: string,
   headers: Record<string, any>,
   signal: AbortSignal,
-  onDownloading?: (progress: DownloadingInfo) => void
+  onDownloading?: (progress: DownloadingInfo) => void,
 ): Promise<Buffer>
 ```
 
@@ -688,7 +690,7 @@ type OnInstallFunction = (
   install: VoidFunction,
   tempAsarPath: string,
   appNameAsarPath: string,
-  logger?: Logger
+  logger?: Logger,
 ) => Promisable<void>
 ```
 
@@ -724,6 +726,7 @@ export type Logger = {
   error: (msg: string, e?: Error) => void
 }
 ```
+
 #### Provider
 
 ```ts
@@ -778,7 +781,7 @@ export interface IProvider {
     name: string,
     updateInfo: UpdateInfo,
     signal: AbortSignal,
-    onDownloading?: (info: DownloadingInfo) => void
+    onDownloading?: (info: DownloadingInfo) => void,
   ) => Promise<Buffer>
   /**
    * Check the old version is less than new version
@@ -799,13 +802,18 @@ export interface IProvider {
    * @param signature signature
    * @param cert certificate
    */
-  verifySignaure: (buffer: Buffer, version: string, signature: string, cert: string) => Promisable<boolean>
+  verifySignaure: (
+    buffer: Buffer,
+    version: string,
+    signature: string,
+    cert: string,
+  ) => Promisable<boolean>
 }
 ```
 
 #### Plugin
 
-```ts
+````ts
 export interface ElectronWithUpdaterOptions {
   /**
    * Whether is in build mode
@@ -1111,7 +1119,7 @@ export interface GeneratorOverrideFunctions {
     buffer: Buffer,
     privateKey: string,
     cert: string,
-    version: string
+    version: string,
   ) => Promisable<string>
   /**
    * Custom generate update json function
@@ -1125,7 +1133,7 @@ export interface GeneratorOverrideFunctions {
     existingJson: UpdateJSON,
     signature: string,
     version: string,
-    minVersion: string
+    minVersion: string,
   ) => Promisable<UpdateJSON>
   /**
    * Custom generate zip file buffer
@@ -1133,7 +1141,7 @@ export interface GeneratorOverrideFunctions {
    */
   generateGzipFile?: (buffer: Buffer) => Promisable<Buffer>
 }
-```
+````
 
 ## Credits
 

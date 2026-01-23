@@ -1,10 +1,9 @@
-import cp from 'node:child_process'
-import fs from 'node:fs'
-import path from 'node:path'
-
 import * as babel from '@babel/core'
 import { getPackageInfoSync } from 'local-pkg'
 import MagicString from 'magic-string'
+import cp from 'node:child_process'
+import fs from 'node:fs'
+import path from 'node:path'
 
 import { parseVersion } from '../../utils/version'
 import { bytecodeLog } from '../constant'
@@ -15,7 +14,7 @@ export const electronModule: {
   rootPath: string
 } = getPackageInfoSync('electron')!
 export const electronMajorVersion: number = parseVersion(electronModule.version!).major
-export const useStrict = '\'use strict\';'
+export const useStrict = "'use strict';"
 export const bytecodeModuleLoader = '__loader__.js'
 
 function getElectronPath(): string {
@@ -53,7 +52,10 @@ export function toRelativePath(filename: string, importer: string): string {
 
 const logErr = (...args: any[]): void => bytecodeLog.error(args.join(' '), { timestamp: true })
 
-export function compileToBytecode(code: string, electronPath: string = getElectronPath()): Promise<Buffer> {
+export function compileToBytecode(
+  code: string,
+  electronPath: string = getElectronPath(),
+): Promise<Buffer> {
   let data = Buffer.from([])
 
   const bytecodePath = getBytecodeCompilerPath()
@@ -69,26 +71,29 @@ export function compileToBytecode(code: string, electronPath: string = getElectr
     }
 
     if (proc.stdout) {
-      proc.stdout.on('data', chunk => data = Buffer.concat([data, chunk]))
-      proc.stdout.on('error', err => logErr(err))
+      proc.stdout.on('data', (chunk) => (data = Buffer.concat([data, chunk])))
+      proc.stdout.on('error', (err) => logErr(err))
       proc.stdout.on('end', () => resolve(data))
     }
 
     if (proc.stderr) {
-      proc.stderr.on('data', chunk => logErr('Error: ', chunk.toString()))
-      proc.stderr.on('error', err => logErr('Error: ', err))
+      proc.stderr.on('data', (chunk) => logErr('Error: ', chunk.toString()))
+      proc.stderr.on('error', (err) => logErr('Error: ', err))
     }
 
-    proc.addListener('error', err => logErr(err))
+    proc.addListener('error', (err) => logErr(err))
 
-    proc.on('error', err => reject(err))
+    proc.on('error', (err) => reject(err))
     proc.on('exit', () => resolve(data))
   })
 }
 
-export function convertArrowFunctionAndTemplate(code: string): { code: string, map: any } {
+export function convertArrowFunctionAndTemplate(code: string): { code: string; map: any } {
   const result = babel.transform(code, {
-    plugins: ['@babel/plugin-transform-arrow-functions', '@babel/plugin-transform-template-literals'],
+    plugins: [
+      '@babel/plugin-transform-arrow-functions',
+      '@babel/plugin-transform-template-literals',
+    ],
   })
   return {
     code: result?.code || code,
@@ -96,9 +101,13 @@ export function convertArrowFunctionAndTemplate(code: string): { code: string, m
   }
 }
 
-export const decodeFn = ';function _0xstr_(a,b){return String.fromCharCode.apply(0,a.map(function(x){return x-b}))};'
-export function obfuscateString(input: string, offset: number = ~~(Math.random() * 16) + 1): string {
-  const hexArray = input.split('').map(c => `0x${(c.charCodeAt(0) + offset).toString(16)}`)
+export const decodeFn =
+  ';function _0xstr_(a,b){return String.fromCharCode.apply(0,a.map(function(x){return x-b}))};'
+export function obfuscateString(
+  input: string,
+  offset: number = ~~(Math.random() * 16) + 1,
+): string {
+  const hexArray = input.split('').map((c) => `0x${(c.charCodeAt(0) + offset).toString(16)}`)
   return `_0xstr_([${hexArray.join(',')}],${offset})`
 }
 
@@ -108,7 +117,11 @@ export function obfuscateString(input: string, offset: number = ~~(Math.random()
  * @param sourcemap whether to generate sourcemap
  * @param offset custom offset
  */
-export function convertLiteral(code: string, sourcemap?: boolean, offset?: number): { code: string, map?: any } {
+export function convertLiteral(
+  code: string,
+  sourcemap?: boolean,
+  offset?: number,
+): { code: string; map?: any } {
   const s = new MagicString(code)
   let hasTransformed = false
   const ast = babel.parse(code, { ast: true })

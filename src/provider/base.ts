@@ -25,7 +25,7 @@ export abstract class BaseProvider implements IProvider {
   public abstract downloadJSON(
     name: string,
     versionPath: string,
-    signal: AbortSignal
+    signal: AbortSignal,
   ): Promise<UpdateJSONWithURL>
 
   /**
@@ -34,6 +34,6 @@ export abstract class BaseProvider implements IProvider {
   public abstract downloadAsar(
     info: UpdateInfoWithURL,
     signal: AbortSignal,
-    onDownloading?: (info: DownloadingInfo) => void
+    onDownloading?: (info: DownloadingInfo) => void,
   ): Promise<Buffer>
 }

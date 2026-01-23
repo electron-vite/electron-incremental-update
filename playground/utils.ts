@@ -1,1 +1,1 @@
-export const data = 1;
+export const data = 1

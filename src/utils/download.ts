@@ -1,9 +1,10 @@
-import type { DownloadingInfo } from '../provider/types'
-import type { UpdateJSON } from './version'
 import type { Arrayable } from '@subframe7536/type-utils'
 import type { ClientRequest, IncomingMessage } from 'electron'
 
 import { app, net } from 'electron'
+
+import type { DownloadingInfo } from '../provider/types'
+import type { UpdateJSON } from './version'
 
 import { isUpdateJSON } from './version'
 
@@ -24,7 +25,12 @@ export function getHeader(headers: Record<string, Arrayable<string>>, key: any):
 export async function downloadUtil<T>(
   url: string,
   headers: Record<string, any>,
-  onResponse: (req: ClientRequest, resp: IncomingMessage, resolve: (data: T) => void, reject: (e: any) => void) => void,
+  onResponse: (
+    req: ClientRequest,
+    resp: IncomingMessage,
+    resolve: (data: T) => void,
+    reject: (e: any) => void,
+  ) => void,
 ): Promise<T> {
   await app.whenReady()
   return new Promise((resolve, reject) => {
@@ -75,19 +81,19 @@ export async function defaultDownloadText<T>(
   signal: AbortSignal,
   resolveData: ResolveDataFn,
 ): Promise<T> {
-  return await downloadUtil<T>(
-    url,
-    headers,
-    (request, resp, resolve, reject) => {
-      let data = ''
-      resp.on('data', chunk => (data += chunk))
-      resp.on('end', () => resolveData(data, resolve, reject))
-      signal.addEventListener('abort', () => {
+  return await downloadUtil<T>(url, headers, (request, resp, resolve, reject) => {
+    let data = ''
+    resp.on('data', (chunk) => (data += chunk))
+    resp.on('end', () => resolveData(data, resolve, reject))
+    signal.addEventListener(
+      'abort',
+      () => {
         request.abort()
         data = null!
-      }, { once: true })
-    },
-  )
+      },
+      { once: true },
+    )
+  })
 }
 /**
  * Default function to download json and parse to UpdateJson
@@ -100,23 +106,18 @@ export async function defaultDownloadUpdateJSON(
   headers: Record<string, any>,
   signal: AbortSignal,
 ): Promise<UpdateJSON> {
-  return await defaultDownloadText<UpdateJSON>(
-    url,
-    headers,
-    signal,
-    (data, resolve, reject) => {
-      try {
-        const json = JSON.parse(data)
-        if (isUpdateJSON(json)) {
-          resolve(json)
-        } else {
-          throw Error
-        }
-      } catch {
-        reject(new Error(`Invalid update json, "${trimData(data)}"`))
+  return await defaultDownloadText<UpdateJSON>(url, headers, signal, (data, resolve, reject) => {
+    try {
+      const json = JSON.parse(data)
+      if (isUpdateJSON(json)) {
+        resolve(json)
+      } else {
+        throw Error
       }
-    },
-  )
+    } catch {
+      reject(new Error(`Invalid update json, "${trimData(data)}"`))
+    }
+  })
 }
 
 /**
@@ -135,32 +136,32 @@ export async function defaultDownloadAsar(
 ): Promise<Buffer> {
   let transferred = 0
   let time = Date.now()
-  return await downloadUtil<Buffer>(
-    url,
-    headers,
-    (request, resp, resolve) => {
-      const total = +getHeader(resp.headers, 'content-length') || -1
-      let data: Buffer[] = []
-      resp.on('data', (chunk) => {
-        const delta = chunk.length
-        transferred += delta
-        const current = Date.now()
-        onDownloading?.({
-          bps: delta / (current - time),
-          delta,
-          percent: total > 0 ? +(transferred / total).toFixed(2) * 100 : -1,
-          total,
-          transferred,
-        })
-        time = current
-        data.push(chunk)
+  return await downloadUtil<Buffer>(url, headers, (request, resp, resolve) => {
+    const total = +getHeader(resp.headers, 'content-length') || -1
+    let data: Buffer[] = []
+    resp.on('data', (chunk) => {
+      const delta = chunk.length
+      transferred += delta
+      const current = Date.now()
+      onDownloading?.({
+        bps: delta / (current - time),
+        delta,
+        percent: total > 0 ? +(transferred / total).toFixed(2) * 100 : -1,
+        total,
+        transferred,
       })
-      resp.on('end', () => resolve(Buffer.concat(data)))
-      signal.addEventListener('abort', () => {
+      time = current
+      data.push(chunk)
+    })
+    resp.on('end', () => resolve(Buffer.concat(data)))
+    signal.addEventListener(
+      'abort',
+      () => {
         request.abort()
         data.length = 0
         data = null!
-      }, { once: true })
-    },
-  )
+      },
+      { once: true },
+    )
+  })
 }

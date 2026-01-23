@@ -1,7 +1,8 @@
-import type { DownloadingInfo, UpdateInfoWithURL, UpdateJSONWithURL, URLHandler } from '../types'
 import type { Promisable } from '@subframe7536/type-utils'
 
 import { URL } from 'node:url'
+
+import type { DownloadingInfo, UpdateInfoWithURL, UpdateJSONWithURL, URLHandler } from '../types'
 
 import { defaultDownloadAsar, defaultDownloadUpdateJSON } from '../../utils/download'
 import { BaseProvider } from '../base'
@@ -31,10 +32,10 @@ export interface BaseGitHubProviderOptions {
   urlHandler?: URLHandler
 }
 
-export abstract class BaseGitHubProvider<T extends BaseGitHubProviderOptions = BaseGitHubProviderOptions> extends BaseProvider {
-  constructor(
-    protected options: T,
-  ) {
+export abstract class BaseGitHubProvider<
+  T extends BaseGitHubProviderOptions = BaseGitHubProviderOptions,
+> extends BaseProvider {
+  constructor(protected options: T) {
     super()
   }
 
@@ -51,22 +52,25 @@ export abstract class BaseGitHubProvider<T extends BaseGitHubProviderOptions = B
       `/${this.options.user}/${this.options.repo}/${extraPath}`,
       'https://github.com',
     )
-    return (await this.urlHandler?.(url) || url).toString()
+    return ((await this.urlHandler?.(url)) || url).toString()
   }
 
   protected abstract getHeaders(accept: string): Record<string, string>
 
   protected abstract getVersionURL(versionPath: string, signal: AbortSignal): Promisable<string>
 
-  public async downloadJSON(name: string, versionPath: string, signal: AbortSignal): Promise<UpdateJSONWithURL> {
+  public async downloadJSON(
+    name: string,
+    versionPath: string,
+    signal: AbortSignal,
+  ): Promise<UpdateJSONWithURL> {
     const { beta, version, ...info } = await defaultDownloadUpdateJSON(
       await this.parseURL(await this.getVersionURL(versionPath, signal)),
       this.getHeaders('json'),
       signal,
     )
-    const getURL = (ver: string): Promise<string> => this.parseURL(
-      `releases/download/v${ver}/${name}-${ver}.asar.gz`,
-    )
+    const getURL = (ver: string): Promise<string> =>
+      this.parseURL(`releases/download/v${ver}/${name}-${ver}.asar.gz`)
 
     return {
       ...info,

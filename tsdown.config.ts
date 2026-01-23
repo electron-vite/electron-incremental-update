@@ -1,5 +1,4 @@
 import { rmSync } from 'node:fs'
-
 import { build, defineConfig } from 'tsdown'
 
 async function transformJS(path: string) {

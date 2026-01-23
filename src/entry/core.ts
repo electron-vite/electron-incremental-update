@@ -1,10 +1,10 @@
-import type { Logger, UpdaterOption } from './types'
 import type { Promisable } from '@subframe7536/type-utils'
 
+import { app } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { app } from 'electron'
+import type { Logger, UpdaterOption } from './types'
 
 import { getPathFromAppNameAsar, isDev } from '../utils/electron'
 import { Updater } from './updater'
@@ -105,24 +105,26 @@ const defaultOnInstall: OnInstallFunction = (install, _, __, logger) => {
  *   },
  * })
  */
-export async function createElectronApp(
-  appOptions: AppOption = {},
-): Promise<void> {
+export async function createElectronApp(appOptions: AppOption = {}): Promise<void> {
   const appNameAsarPath = getPathFromAppNameAsar()
 
   const {
     mainPath = isDev
       ? path.join(app.getAppPath(), __EIU_ELECTRON_DIST_PATH__, 'main', __EIU_MAIN_FILE__)
-      : path.join(path.dirname(app.getAppPath()), __EIU_ASAR_BASE_NAME__, 'main', __EIU_MAIN_FILE__),
+      : path.join(
+          path.dirname(app.getAppPath()),
+          __EIU_ASAR_BASE_NAME__,
+          'main',
+          __EIU_MAIN_FILE__,
+        ),
     updater,
     onInstall = defaultOnInstall,
     beforeStart,
     onStartError,
   } = appOptions
 
-  const updaterInstance = typeof updater === 'object' || !updater
-    ? new Updater(updater)
-    : await updater()
+  const updaterInstance =
+    typeof updater === 'object' || !updater ? new Updater(updater) : await updater()
 
   const logger = updaterInstance.logger
   try {
@@ -130,7 +132,12 @@ export async function createElectronApp(
     const tempAsarPath = `${appNameAsarPath}.tmp`
     if (fs.existsSync(tempAsarPath)) {
       logger?.info(`Installing new asar from ${tempAsarPath}`)
-      await onInstall(() => fs.renameSync(tempAsarPath, appNameAsarPath), tempAsarPath, appNameAsarPath, logger)
+      await onInstall(
+        () => fs.renameSync(tempAsarPath, appNameAsarPath),
+        tempAsarPath,
+        appNameAsarPath,
+        logger,
+      )
     }
 
     // logger.debug(`app.getAppPath(): ${app.getAppPath()}`)
@@ -140,9 +147,9 @@ export async function createElectronApp(
     await beforeStart?.(mainPath, logger)
 
     if (__EIU_IS_ESM__) {
-      (await import(`file://${mainPath}`)).default(updaterInstance)
+      ;(await import(`file://${mainPath}`)).default(updaterInstance)
     } else {
-      // eslint-disable-next-line ts/no-require-imports
+      // oxlint-disable-next-line typescript/no-var-requires
       require(mainPath)(updaterInstance)
     }
   } catch (error) {

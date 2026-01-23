@@ -2,7 +2,12 @@
 /* eslint-disable no-eval */
 import { describe, expect, it } from 'bun:test'
 
-import { convertArrowFunctionAndTemplate, convertLiteral, decodeFn, obfuscateString } from '../src/vite/bytecode/utils'
+import {
+  convertArrowFunctionAndTemplate,
+  convertLiteral,
+  decodeFn,
+  obfuscateString,
+} from '../src/vite/bytecode/utils'
 
 function testObfuscate(str: string) {
   expect(eval(decodeFn + obfuscateString(str))).toBe(str)
@@ -14,7 +19,7 @@ describe('obfuscate', () => {
   })
 
   it('obfuscate escape', () => {
-    testObfuscate('\\\{\}\'\"`')
+    testObfuscate('\\\{}\'"`')
   })
 })
 
@@ -37,9 +42,11 @@ describe('arrow to function', () => {
   })
   it('convert multiple line template tag', () => {
     const code = `\`
-    no new version for \$\{test\}
+    no new version for $\{test}
     \``
-    expect(convertArrowFunctionAndTemplate(code).code).toMatchInlineSnapshot(`""\\n    no new version for ".concat(test, "\\n    ");"`)
+    expect(convertArrowFunctionAndTemplate(code).code).toMatchInlineSnapshot(
+      `""\\n    no new version for ".concat(test, "\\n    ");"`,
+    )
   })
 })
 
@@ -61,7 +68,7 @@ describe('convert', () => {
       "const test = _0xstr_([0x60,0x7f,0x81,0x2b,0x26,0x64],4);test
       ;function _0xstr_(a,b){return String.fromCharCode.apply(0,a.map(function(x){return x-b}))};"
     `)
-    expect(eval(result)).toBe('\\{}\'\"`')
+    expect(eval(result)).toBe('\\{}\'"`')
   })
 
   it('convert export variable', () => {

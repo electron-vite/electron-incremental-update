@@ -1,10 +1,8 @@
-import {
-  type Plugin,
-  type ConfigEnv,
-  type UserConfig,
-  build as viteBuild,
-  version,
-} from 'vite'
+import type { StdioOptions, SpawnOptions } from 'node:child_process'
+import type { Plugin, ConfigEnv, UserConfig, LibraryOptions, InlineConfig } from 'vite'
+
+import { build as viteBuild, version } from 'vite'
+
 import {
   resolveServerUrl,
   resolveViteConfig,
@@ -13,21 +11,17 @@ import {
   withExternalBuiltins,
   treeKillSync,
 } from './utils'
-import type { StdioOptions, SpawnOptions } from 'node:child_process'
 
 // public utils
-export {
-  resolveViteConfig,
-  withExternalBuiltins,
-}
+export { resolveViteConfig, withExternalBuiltins }
 export { loadPackageJSON, loadPackageJSONSync } from 'local-pkg'
 
 export interface ElectronOptions {
   /**
    * Shortcut of `build.lib.entry`
    */
-  entry?: import('vite').LibraryOptions['entry']
-  vite?: import('vite').InlineConfig
+  entry?: LibraryOptions['entry']
+  vite?: InlineConfig
   /**
    * Triggered when Vite is built every time -- `vite serve` command only.
    *
@@ -42,7 +36,7 @@ export interface ElectronOptions {
      * @param options options for `child_process.spawn`
      * @param customElectronPkg custom electron package name (default: 'electron')
      */
-    startup: (argv?: string[], options?: import('node:child_process').SpawnOptions, customElectronPkg?: string) => Promise<void>
+    startup: (argv?: string[], options?: SpawnOptions, customElectronPkg?: string) => Promise<void>
     /** Reload Electron-Renderer */
     reload: () => void
   }) => void | Promise<void>
@@ -85,41 +79,42 @@ export default function electron(options: ElectronOptions | ElectronOptions[]): 
             options.vite.envPrefix ??= server.config.envPrefix
 
             options.vite.build ??= {}
-            if (!Object.keys(options.vite.build).includes('watch')) { // #252
+            if (!Object.keys(options.vite.build).includes('watch')) {
+              // #252
               options.vite.build.watch = {}
             }
             options.vite.build.minify ??= false
 
             options.vite.plugins ??= []
-            options.vite.plugins.push(
-              {
-                name: ':startup',
-                closeBundle() {
-                  if (++closeBundleCount < entryCount) return
+            options.vite.plugins.push({
+              name: ':startup',
+              closeBundle() {
+                if (++closeBundleCount < entryCount) {
+                  return
+                }
 
-                  if (options.onstart) {
-                    options.onstart.call(this, {
-                      startup,
-                      // Why not use Vite's built-in `/@vite/client` to implement Hot reload?
-                      // Because Vite only inserts `/@vite/client` into the `*.html` entry file, the preload scripts are usually a `*.js` file.
-                      // @see - https://github.com/vitejs/vite/blob/v5.2.11/packages/vite/src/node/server/middlewares/indexHtml.ts#L399
-                      reload() {
-                        if (process.electronApp) {
-                          (server.hot || server.ws).send({ type: 'full-reload' })
+                if (options.onstart) {
+                  options.onstart.call(this, {
+                    startup,
+                    // Why not use Vite's built-in `/@vite/client` to implement Hot reload?
+                    // Because Vite only inserts `/@vite/client` into the `*.html` entry file, the preload scripts are usually a `*.js` file.
+                    // @see - https://github.com/vitejs/vite/blob/v5.2.11/packages/vite/src/node/server/middlewares/indexHtml.ts#L399
+                    reload() {
+                      if (process.electronApp) {
+                        ;(server.hot || server.ws).send({ type: 'full-reload' })
 
-                          // For Electron apps that don't need to use the renderer process.
-                          startup.send('electron-vite&type=hot-reload')
-                        } else {
-                          startup()
-                        }
-                      },
-                    })
-                  } else {
-                    startup()
-                  }
-                },
+                        // For Electron apps that don't need to use the renderer process.
+                        startup.send('electron-vite&type=hot-reload')
+                      } else {
+                        startup()
+                      }
+                    },
+                  })
+                } else {
+                  startup()
+                }
               },
-            )
+            })
             build(options)
           }
         })
@@ -152,16 +147,16 @@ export default function electron(options: ElectronOptions | ElectronOptions[]): 
           options.vite.envPrefix ??= userConfig.envPrefix
           await build(options)
         }
-      }
+      },
     },
   ]
 }
 
 interface StartupFn {
   (): Promise<void>
-  send: (message: string) => void;
-  hookedProcessExit: boolean;
-  exit: () => Promise<void>;
+  send: (message: string) => void
+  hookedProcessExit: boolean
+  exit: () => Promise<void>
 }
 
 /**
@@ -175,18 +170,18 @@ export const startup: StartupFn = async (
   argv = ['.', '--no-sandbox'],
   options?: SpawnOptions,
   customElectronPkg?: string,
- ) => {
+) => {
   const { spawn } = await import('node:child_process')
-  // @ts-ignore
   const electron = await import(customElectronPkg ?? 'electron')
-  const electronPath = (electron.default ?? electron)
+  const electronPath = electron.default ?? electron
 
   await startup.exit()
 
   // Start Electron.app
-  const stdio: StdioOptions = process.platform === 'linux'
-      // reserve file descriptor 3 for Chromium; put Node IPC on file descriptor 4
-      ? ['inherit', 'inherit', 'inherit', 'ignore', 'ipc']
+  const stdio: StdioOptions =
+    process.platform === 'linux'
+      ? // reserve file descriptor 3 for Chromium; put Node IPC on file descriptor 4
+        ['inherit', 'inherit', 'inherit', 'ignore', 'ipc']
       : ['inherit', 'inherit', 'inherit', 'ipc']
   process.electronApp = spawn(electronPath, argv, {
     stdio,

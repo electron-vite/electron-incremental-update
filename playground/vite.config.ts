@@ -1,4 +1,4 @@
-import { defineElectronConfig } from "../src/vite";
+import { defineElectronConfig } from '../src/vite'
 
 export default defineElectronConfig({
   // todo)) pkg can be a path to package.json
@@ -11,11 +11,9 @@ export default defineElectronConfig({
   main: { files: './main.ts' },
   updater: {
     entry: {
-      appEntryPath: './entry.ts'
+      appEntryPath: './entry.ts',
     },
   },
   // todo)) new `root` in top level. create package.json if not exist
-  renderer: {
-
-  }
+  renderer: {},
 })

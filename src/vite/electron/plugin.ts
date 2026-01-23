@@ -1,5 +1,6 @@
-import { createRequire } from 'node:module'
 import type { Plugin } from 'vite'
+
+import { createRequire } from 'node:module'
 
 export interface NotBundleOptions {
   filter?: (id: string) => void | boolean
@@ -28,17 +29,17 @@ export function notBundle(options: NotBundleOptions = {}): Plugin {
         id: bareImportRE,
       },
       async handler(source, importer) {
-        if (!importer || importer.includes('node_modules/')) return
+        if (!importer || importer.includes('node_modules/')) {return}
         if (externalIds.has(source)) {
           return { id: source, external: true }
         }
 
         const resolved = await this.resolve(source, importer, {
-          skipSelf: true
+          skipSelf: true,
         })
-        
+
         const id = resolved?.id
-        if (!id || !nodeModulesRE.test(id) || options.filter?.(id) === false) return
+        if (!id || !nodeModulesRE.test(id) || options.filter?.(id) === false) {return}
 
         try {
           // Because we build Main process into `cjs`, so a npm-pkg can be loaded by `require()`.
@@ -48,13 +49,13 @@ export function notBundle(options: NotBundleOptions = {}): Plugin {
         }
 
         externalIds.add(source)
-        
-        return { 
-          id: source, 
+
+        return {
+          id: source,
           external: true,
-          moduleSideEffects: false
+          moduleSideEffects: false,
         }
-      }
-    }
+      },
+    },
   }
 }

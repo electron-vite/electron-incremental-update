@@ -1,3 +1,3 @@
-import { createElectronApp } from '../src/entry';
+import { createElectronApp } from '../src/entry'
 
 createElectronApp()

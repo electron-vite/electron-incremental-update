@@ -1,18 +1,18 @@
+import type { InlineConfig } from 'vite'
+
+import { createPackage } from '@electron/asar'
+import fs from 'node:fs'
+import path from 'node:path'
+import { mergeConfig } from 'vite'
+
 import type { UpdateJSON } from '../utils/version'
 import type { BytecodeOptions } from './bytecode'
 import type { BuildAsarOption, BuildEntryOption, BuildVersionOption } from './option'
-import type { InlineConfig } from 'vite'
-
-import fs from 'node:fs'
-import path from 'node:path'
-
-import { createPackage } from '@electron/asar'
-import { mergeConfig } from 'vite'
-import { build } from './electron/core'
 
 import { isUpdateJSON } from '../utils/version'
 import { bytecodePlugin } from './bytecode'
 import { log } from './constant'
+import { build } from './electron/core'
 import { readableSize } from './utils'
 
 export async function buildAsar({
@@ -96,26 +96,27 @@ export async function buildEntry(
       entry: appEntryPath,
       ...nativeModuleEntryMap,
     },
-    vite: mergeConfig<InlineConfig, InlineConfig>({
-      plugins: [
-        bytecodeOptions && bytecodePlugin('main', bytecodeOptions),
-      ],
-      build: {
-        sourcemap,
-        minify,
-        outDir: entryOutputDirPath,
-        emptyOutDir: true,
-        rolldownOptions: {
-          external,
-          platform: 'node',
-          output: {
-            polyfillRequire: false,
-            format: isESM ? 'esm' : 'cjs',
-            dynamicImportInCjs: !ignoreDynamicRequires
-          }
+    vite: mergeConfig<InlineConfig, InlineConfig>(
+      {
+        plugins: [bytecodeOptions && bytecodePlugin('main', bytecodeOptions)],
+        build: {
+          sourcemap,
+          minify,
+          outDir: entryOutputDirPath,
+          emptyOutDir: true,
+          rolldownOptions: {
+            external,
+            platform: 'node',
+            output: {
+              polyfillRequire: false,
+              format: isESM ? 'esm' : 'cjs',
+              dynamicImportInCjs: !ignoreDynamicRequires,
+            },
+          },
         },
+        define,
       },
-      define,
-    }, overrideViteOptions ?? {}),
+      overrideViteOptions ?? {},
+    ),
   })
 }

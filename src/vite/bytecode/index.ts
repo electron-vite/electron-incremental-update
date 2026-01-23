@@ -1,10 +1,9 @@
 import type { Promisable } from '@subframe7536/type-utils'
 import type { Plugin, ResolvedConfig } from 'vite'
 
+import MagicString from 'magic-string'
 import fs from 'node:fs'
 import path from 'node:path'
-
-import MagicString from 'magic-string'
 import { createFilter, normalizePath } from 'vite'
 
 import { bytecodeId, bytecodeLog } from '../constant'
@@ -44,23 +43,18 @@ function getBytecodeLoaderBlock(chunkFileName: string): string {
 /**
  * Compile to v8 bytecode to protect source code.
  */
-export function bytecodePlugin(
-  env: 'preload' | 'main',
-  options: BytecodeOptions,
-): Plugin | null {
-  const {
-    enable,
-    preload = false,
-    electronPath,
-    beforeCompile,
-  } = options
+export function bytecodePlugin(env: 'preload' | 'main', options: BytecodeOptions): Plugin | null {
+  const { enable, preload = false, electronPath, beforeCompile } = options
 
   if (!enable) {
     return null
   }
 
   if (!preload && env === 'preload') {
-    bytecodeLog.warn('`bytecodePlugin` is skiped in preload. To enable in preload, please manually set the "enablePreload" option to true and set `sandbox: false` when creating the window', { timestamp: true })
+    bytecodeLog.warn(
+      '`bytecodePlugin` is skiped in preload. To enable in preload, please manually set the "enablePreload" option to true and set `sandbox: false` when creating the window',
+      { timestamp: true },
+    )
     return null
   }
 
@@ -68,7 +62,7 @@ export function bytecodePlugin(
 
   let config: ResolvedConfig
   let bytecodeRequired = false
-  let bytecodeFiles: { name: string, size: number }[] = []
+  let bytecodeFiles: { name: string; size: number }[] = []
 
   return {
     name: `${bytecodeId}-${env}`,
@@ -117,12 +111,14 @@ export function bytecodePlugin(
 
       const bundles = Object.keys(output)
       const chunks = Object.values(output).filter(
-        chunk => chunk.type === 'chunk' && chunk.fileName !== bytecodeModuleLoader,
+        (chunk) => chunk.type === 'chunk' && chunk.fileName !== bytecodeModuleLoader,
       ) as any[]
-      const bytecodeChunks = chunks.map(chunk => chunk.fileName)
-      const nonEntryChunks = chunks.filter(chunk => !chunk.isEntry).map(chunk => path.basename(chunk.fileName))
+      const bytecodeChunks = new Set(chunks.map((chunk) => chunk.fileName))
+      const nonEntryChunks = chunks
+        .filter((chunk) => !chunk.isEntry)
+        .map((chunk) => path.basename(chunk.fileName))
 
-      const pattern = nonEntryChunks.map(chunk => `(${chunk})`).join('|')
+      const pattern = nonEntryChunks.map((chunk) => `(${chunk})`).join('|')
       const bytecodeRE = pattern ? new RegExp(`require\\(\\S*(?=(${pattern})\\S*\\))`, 'g') : null
 
       await Promise.all(
@@ -153,7 +149,7 @@ export function bytecodePlugin(
               _code = s.toString()
             }
 
-            if (bytecodeChunks.includes(name)) {
+            if (bytecodeChunks.has(name)) {
               const bytecodeBuffer = await compileToBytecode(_code, electronPath)
               fs.writeFileSync(`${chunkFilePath}c`, bytecodeBuffer)
 
@@ -173,7 +169,7 @@ export function bytecodePlugin(
                 const idsToHandle = new Set([...chunk.imports, ...chunk.dynamicImports])
 
                 for (const moduleId of idsToHandle) {
-                  if (bytecodeChunks.includes(moduleId)) {
+                  if (bytecodeChunks.has(moduleId)) {
                     hasBytecodeMoudle = true
                     break
                   }
@@ -207,12 +203,11 @@ export function bytecodePlugin(
     closeBundle() {
       const outDir = `${normalizePath(path.relative(config.root, path.resolve(config.root, config.build.outDir)))}/`
       bytecodeFiles.forEach((file) => {
-        bytecodeLog.info(
-          `${outDir}${file.name} [${readableSize(file.size)}]`,
-          { timestamp: true },
-        )
+        bytecodeLog.info(`${outDir}${file.name} [${readableSize(file.size)}]`, { timestamp: true })
       })
-      bytecodeLog.info(`${bytecodeFiles.length} bundles compiled into bytecode.`, { timestamp: true })
+      bytecodeLog.info(`${bytecodeFiles.length} bundles compiled into bytecode.`, {
+        timestamp: true,
+      })
       bytecodeFiles = []
     },
   }

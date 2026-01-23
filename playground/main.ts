@@ -1,8 +1,10 @@
-import { app, BrowserWindow } from 'electron';
-import { startupWithUpdater } from '../src/entry';
+import { app, BrowserWindow } from 'electron'
+
+import { startupWithUpdater } from '../src/entry'
 
 export default startupWithUpdater(() => {
-  app.whenReady()
+  app
+    .whenReady()
     .then(() => import('./utils'))
     .then((util) => console.log(util.data))
     .then(() => {

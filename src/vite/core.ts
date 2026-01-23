@@ -1,22 +1,22 @@
-import type { ElectronWithUpdaterOptions, PKG } from './option'
 import type { AnyFunction } from '@subframe7536/type-utils'
 import type { ChildProcessWithoutNullStreams, StdioOptions } from 'node:child_process'
 import type { InlineConfig, PluginOption } from 'vite'
-import type { ElectronSimpleOptions } from './electron/simple'
-
-import fs from 'node:fs'
-import path from 'node:path'
 
 import { isCI } from 'ci-info'
 import { getPackageInfoSync, loadPackageJSON } from 'local-pkg'
+import fs from 'node:fs'
+import path from 'node:path'
 import { mergeConfig, normalizePath } from 'vite'
-import { startup } from './electron/core'
-import { notBundle } from './electron/plugin'
-import ElectronSimple from './electron/simple'
+
+import type { ElectronSimpleOptions } from './electron/simple'
+import type { ElectronWithUpdaterOptions, PKG } from './option'
 
 import { buildAsar, buildEntry, buildUpdateJson } from './build'
 import { bytecodePlugin } from './bytecode'
 import { bytecodeLog, id, log } from './constant'
+import { startup } from './electron/core'
+import { notBundle } from './electron/plugin'
+import ElectronSimple from './electron/simple'
 import { parseOptions } from './option'
 import { copyAndSkipIfExist } from './utils'
 
@@ -67,9 +67,10 @@ export async function filterErrorMessageStartup(
 ): Promise<void> {
   // https://github.com/electron-vite/./electron/pull/283
   // reserve file descriptor 3 for Chromium; put Node IPC on file descriptor 4
-  const stdio: StdioOptions = process.platform === 'linux'
-    ? ['inherit', 'pipe', 'pipe', 'ignore', 'ipc']
-    : ['inherit', 'pipe', 'pipe', 'ipc']
+  const stdio: StdioOptions =
+    process.platform === 'linux'
+      ? ['inherit', 'pipe', 'pipe', 'ignore', 'ipc']
+      : ['inherit', 'pipe', 'pipe', 'ipc']
   await args.startup(undefined, { stdio })
   const elec = (process as unknown as { electronApp: ChildProcessWithoutNullStreams }).electronApp
   elec.stdout.addListener('data', (data: Buffer) => {
@@ -98,7 +99,7 @@ export async function filterErrorMessageStartup(
 export function fixWinCharEncoding<T extends AnyFunction>(fn: T): T {
   return (async (...args) => {
     if (process.platform === 'win32') {
-      (await import('node:child_process')).spawnSync('chcp', ['65001'])
+      ;(await import('node:child_process')).spawnSync('chcp', ['65001'])
     }
     await fn(...args)
   }) as T
@@ -113,7 +114,9 @@ function getMainFileBaseName(options: ElectronWithUpdaterOptions['main']['files'
   } else {
     const name = options?.index ?? options?.main
     if (!name) {
-      throw new Error(`\`options.main.files\` (${options}) must have "index" or "main" key, like \`{ index: "./electron/main/index.ts" }\``)
+      throw new Error(
+        `\`options.main.files\` (${options}) must have "index" or "main" key, like \`{ index: "./electron/main/index.ts" }\``,
+      )
     }
     mainFilePath = options?.index ? 'index.js' : 'main.js'
   }
@@ -180,7 +183,7 @@ export async function electronWithUpdater(
 ): Promise<PluginOption[] | undefined> {
   let {
     isBuild,
-    pkg = await loadPackageJSON() as PKG | null,
+    pkg = (await loadPackageJSON()) as PKG | null,
     main: _main,
     preload: _preload,
     sourcemap = !isBuild,
@@ -191,16 +194,15 @@ export async function electronWithUpdater(
     useNotBundle = true,
   } = options
   if (!pkg || !pkg.version || !pkg.name || !pkg.main) {
-    log.error('package.json not found or invalid, must contains version, name and main field', { timestamp: true })
+    log.error('package.json not found or invalid, must contains version, name and main field', {
+      timestamp: true,
+    })
     return undefined
   }
   const isESM = pkg.type === 'module'
 
-  let bytecodeOptions = typeof bytecode === 'object'
-    ? bytecode
-    : bytecode === true
-      ? { enable: true }
-      : undefined
+  let bytecodeOptions =
+    typeof bytecode === 'object' ? bytecode : bytecode === true ? { enable: true } : undefined
 
   if (isESM && bytecodeOptions?.enable) {
     bytecodeLog.warn(
@@ -210,22 +212,17 @@ export async function electronWithUpdater(
     bytecodeOptions = undefined
   }
 
-  const {
-    buildAsarOption,
-    buildEntryOption,
-    buildVersionOption,
-    postBuild,
-    cert,
-  } = await parseOptions(isBuild, pkg, sourcemap, minify, updater)
+  const { buildAsarOption, buildEntryOption, buildVersionOption, postBuild, cert } =
+    await parseOptions(isBuild, pkg, sourcemap, minify, updater)
   const { entryOutputDirPath, nativeModuleEntryMap, appEntryPath, external } = buildEntryOption
 
   try {
     fs.rmSync(buildAsarOption.electronDistPath, { recursive: true, force: true })
     fs.rmSync(entryOutputDirPath, { recursive: true, force: true })
-  } catch { }
+  } catch {}
   log.info(`Clear cache files`, { timestamp: true })
 
-  sourcemap ??= (isBuild || !!process.env.VSCODE_DEBUG)
+  sourcemap ??= isBuild || !!process.env.VSCODE_DEBUG
 
   const _appPath = normalizePath(path.join(entryOutputDirPath, 'entry.js'))
   if (path.resolve(normalizePath(pkg.main)) !== path.resolve(_appPath)) {
@@ -240,16 +237,13 @@ export async function electronWithUpdater(
     __EIU_IS_ESM__: JSON.stringify(isESM),
     __EIU_MAIN_FILE__: JSON.stringify(getMainFileBaseName(_main.files)),
     __EIU_SIGNATURE_CERT__: JSON.stringify(cert),
-    __EIU_VERSION_PATH__: JSON.stringify(parseVersionPath(normalizePath(buildVersionOption.versionPath))),
+    __EIU_VERSION_PATH__: JSON.stringify(
+      parseVersionPath(normalizePath(buildVersionOption.versionPath)),
+    ),
   }
 
   async function _buildEntry(): Promise<void> {
-    await buildEntry(
-      buildEntryOption,
-      isESM,
-      define,
-      bytecodeOptions,
-    )
+    await buildEntry(buildEntryOption, isESM, define, bytecodeOptions)
     log.info(`Build entry to '${entryOutputDirPath}'`, { timestamp: true })
     await postBuild?.({
       isBuild,
@@ -307,8 +301,8 @@ export async function electronWithUpdater(
             rolldownOptions: {
               external,
               output: {
-                format: isESM ? 'esm' : 'cjs'
-              }
+                format: isESM ? 'esm' : 'cjs',
+              },
             },
           },
           define,
@@ -332,7 +326,10 @@ export async function electronWithUpdater(
                 await _buildEntry()
                 const buffer = await buildAsar(buildAsarOption)
                 if (!buildVersionJson && !isCI) {
-                  log.warn('No `buildVersionJson` option setup, skip build version json. Only build in CI by default', { timestamp: true })
+                  log.warn(
+                    'No `buildVersionJson` option setup, skip build version json. Only build in CI by default',
+                    { timestamp: true },
+                  )
                 } else {
                   await buildUpdateJson(buildVersionOption, buffer)
                 }
@@ -344,7 +341,7 @@ export async function electronWithUpdater(
             minify,
             outDir: `${buildAsarOption.electronDistPath}/preload`,
             rolldownOptions: {
-              external
+              external,
             },
           },
           define,
@@ -357,10 +354,9 @@ export async function electronWithUpdater(
   const result: PluginOption[] = [ElectronSimple(electronPluginOptions)]
 
   if (nativeModuleEntryMap) {
-    const files = [
-      ...Object.values(nativeModuleEntryMap),
-      appEntryPath,
-    ].map(file => path.resolve(normalizePath(file)))
+    const files = [...Object.values(nativeModuleEntryMap), appEntryPath].map((file) =>
+      path.resolve(normalizePath(file)),
+    )
 
     result.push({
       name: `${id}-dev`,
@@ -368,32 +364,27 @@ export async function electronWithUpdater(
         return !isBuild
       },
       configureServer(server) {
-        server.watcher
-          .add(files)
-          .on(
-            'change',
-            async (p) => {
-              if (!files.includes(p)) {
-                return
-              }
-              await _buildEntry()
-              if (_main.onstart) {
-                await _main.onstart({
-                  startup,
-                  reload: () => {
-                    if (process.electronApp) {
-                      (server.hot || server.ws).send({ type: 'full-reload' })
-                      startup.send('electron-vite&type=hot-reload')
-                    } else {
-                      startup()
-                    }
-                  },
-                })
-              } else {
-                await startup()
-              }
-            },
-          )
+        server.watcher.add(files).on('change', async (p) => {
+          if (!files.includes(p)) {
+            return
+          }
+          await _buildEntry()
+          if (_main.onstart) {
+            await _main.onstart({
+              startup,
+              reload: () => {
+                if (process.electronApp) {
+                  ;(server.hot || server.ws).send({ type: 'full-reload' })
+                  startup.send('electron-vite&type=hot-reload')
+                } else {
+                  startup()
+                }
+              },
+            })
+          } else {
+            await startup()
+          }
+        })
       },
     })
   }

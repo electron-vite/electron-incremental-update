@@ -1,11 +1,15 @@
-import type { ElectronWithUpdaterOptions } from './option'
 import type { UserConfig, UserConfigFn } from 'vite'
+
+import type { ElectronWithUpdaterOptions } from './option'
 
 import { electronWithUpdater } from './core'
 
 type MakeOptional<T, K extends keyof T> = Partial<Pick<T, K>> & Omit<T, K>
 
-export interface ElectronViteHelperOptions extends MakeOptional<ElectronWithUpdaterOptions, 'isBuild'> {
+export interface ElectronViteHelperOptions extends MakeOptional<
+  ElectronWithUpdaterOptions,
+  'isBuild'
+> {
   /**
    * Config for renderer process
    */
@@ -43,9 +47,7 @@ export interface ElectronViteHelperOptions extends MakeOptional<ElectronWithUpda
  * })
  * ```
  */
-export function defineElectronConfig(
-  options: ElectronViteHelperOptions,
-): UserConfigFn {
+export function defineElectronConfig(options: ElectronViteHelperOptions): UserConfigFn {
   return ({ command }) => {
     options.isBuild ??= command === 'build'
     const electronPlugin = electronWithUpdater(options as ElectronWithUpdaterOptions)

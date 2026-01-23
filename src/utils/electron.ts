@@ -1,9 +1,6 @@
-import { BrowserWindow } from 'electron'
-
+import { BrowserWindow, app } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
-
-import { app } from 'electron'
 
 /**
  * type only entry dir path, transformed by vite's define
@@ -39,7 +36,9 @@ export const isLinux: boolean = process.platform === 'linux'
  * If is in dev, **always** return `'DEV.asar'`
  */
 export function getPathFromAppNameAsar(...paths: string[]): string {
-  return isDev ? 'DEV.asar' : path.join(path.dirname(app.getAppPath()), `${app.name}.asar`, ...paths)
+  return isDev
+    ? 'DEV.asar'
+    : path.join(path.dirname(app.getAppPath()), `${app.name}.asar`, ...paths)
 }
 
 /**
@@ -65,9 +64,11 @@ export function getEntryVersion(): string {
 export function requireNative<T = any>(moduleName: string): T {
   const m = getPathFromEntryAsar(moduleName)
   if (__EIU_IS_ESM__) {
-    throw new Error(`Cannot require "${m}", \`requireNative\` only support CommonJS, use \`importNative\` instead`)
+    throw new Error(
+      `Cannot require "${m}", \`requireNative\` only support CommonJS, use \`importNative\` instead`,
+    )
   }
-  // eslint-disable-next-line ts/no-require-imports
+  // oxlint-disable-next-line typescript/no-var-requires
   return require(m)
 }
 
@@ -80,7 +81,9 @@ export function requireNative<T = any>(moduleName: string): T {
 export async function importNative<T = any>(moduleName: string): Promise<T> {
   const m = getPathFromEntryAsar(moduleName)
   if (!__EIU_IS_ESM__) {
-    throw new Error(`Cannot import "${m}", \`importNative\` only support ESModule, use \`requireNative\` instead`)
+    throw new Error(
+      `Cannot import "${m}", \`importNative\` only support ESModule, use \`requireNative\` instead`,
+    )
   }
   return await import(`file://${m}.js`)
 }
@@ -109,7 +112,7 @@ export function setAppUserModelId(id?: string): void {
  * Only support CommonJS
  */
 export function disableHWAccForWin7(): void {
-  // eslint-disable-next-line ts/no-require-imports
+  // oxlint-disable-next-line typescript/no-var-requires
   if (!__EIU_IS_ESM__ && require('node:os').release().startsWith('6.1')) {
     app.disableHardwareAcceleration()
   }

@@ -43,7 +43,12 @@ export function parseVersion(version: string): Version {
     ret.stage = stage
     ret.stageVersion = Number(_v) || -1
   }
-  if (Number.isNaN(major) || Number.isNaN(minor) || Number.isNaN(patch) || Number.isNaN(ret.stageVersion)) {
+  if (
+    Number.isNaN(major) ||
+    Number.isNaN(minor) ||
+    Number.isNaN(patch) ||
+    Number.isNaN(ret.stageVersion)
+  ) {
     throw new TypeError(`Invalid version: ${version}`)
   }
   return ret
@@ -81,7 +86,7 @@ export function defaultIsLowerVersion(oldVer: string, newVer: string): boolean {
 /**
  * Update info json
  */
-export type UpdateInfo = {
+export interface UpdateInfo {
   /**
    * Update Asar signature
    */
@@ -123,7 +128,12 @@ export function isUpdateJSON(json: any): json is UpdateJSON {
  * @param version target version
  * @param minimumVersion minimum version
  */
-export function defaultVersionJsonGenerator(existingJson: UpdateJSON, signature: string, version: string, minimumVersion: string): UpdateJSON {
+export function defaultVersionJsonGenerator(
+  existingJson: UpdateJSON,
+  signature: string,
+  version: string,
+  minimumVersion: string,
+): UpdateJSON {
   existingJson.beta = {
     version,
     minimumVersion,

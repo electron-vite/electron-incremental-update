@@ -1,9 +1,10 @@
-import type { UpdateJSON } from '../utils/version'
-import type { BytecodeOptions } from './bytecode'
-import type { DistinguishedName } from './key'
 import type { Promisable } from '@subframe7536/type-utils'
 import type { InlineConfig } from 'vite'
+
+import type { UpdateJSON } from '../utils/version'
+import type { BytecodeOptions } from './bytecode'
 import type { ElectronOptions } from './electron/core'
+import type { DistinguishedName } from './key'
 
 import { defaultSignature } from '../utils/crypto'
 import { defaultVersionJsonGenerator } from '../utils/version'
@@ -370,7 +371,7 @@ interface UpdaterOptions {
   overrideGenerator?: GeneratorOverrideFunctions
 }
 
-type ParseOptionReturn = {
+interface ParseOptionReturn {
   buildAsarOption: BuildAsarOption
   buildEntryOption: Required<Omit<BuildEntryOption, 'postBuild'>>
   buildVersionOption: BuildVersionOption
@@ -400,9 +401,9 @@ export async function parseOptions(
         /.*\.(node|dll|dylib|so)$/,
         'original-fs',
         'electron',
-        ...(isBuild || postBuild)
+        ...(isBuild || postBuild
           ? []
-          : Object.keys('dependencies' in pkg ? pkg.dependencies as object : {}),
+          : Object.keys('dependencies' in pkg ? (pkg.dependencies as object) : {})),
       ],
       overrideViteOptions = {},
     } = {},

@@ -1,9 +1,14 @@
+import { afterAll, describe, expect, it } from 'bun:test'
 import { readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path/posix'
 
-import { afterAll, describe, expect, it } from 'bun:test'
-
-import { aesDecrypt, aesEncrypt, defaultSignature, defaultVerifySignature, hashBuffer } from '../src/utils/crypto'
+import {
+  aesDecrypt,
+  aesEncrypt,
+  defaultSignature,
+  defaultVerifySignature,
+  hashBuffer,
+} from '../src/utils/crypto'
 import { generateKeyPair } from '../src/vite/key'
 
 let plain = ''
@@ -25,7 +30,16 @@ describe('test verify', async () => {
   const dir = join(__dirname.replace(/\\/g, '/'), '/keys')
   const privateKeyPath = join(dir, '/keys/key.pem')
   const certPath = join(dir, '/keys/cert.pem')
-  await generateKeyPair(2048, [{ name: 'commonName', value: 'test' }, { name: 'organizationName', value: 'org.test' }], 365, privateKeyPath, certPath)
+  await generateKeyPair(
+    2048,
+    [
+      { name: 'commonName', value: 'test' },
+      { name: 'organizationName', value: 'org.test' },
+    ],
+    365,
+    privateKeyPath,
+    certPath,
+  )
   const privateKey = readFileSync(privateKeyPath, { encoding: 'utf-8' })
   const cert = readFileSync(certPath, { encoding: 'utf-8' })
   const version = '0.0.0-alpha1'
