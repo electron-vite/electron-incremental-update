@@ -1,7 +1,7 @@
 import type { ElectronWithUpdaterOptions, PKG } from './option'
 import type { AnyFunction } from '@subframe7536/type-utils'
 import type { ChildProcessWithoutNullStreams, StdioOptions } from 'node:child_process'
-import type { BuildOptions, InlineConfig, PluginOption } from 'vite'
+import type { InlineConfig, PluginOption } from 'vite'
 import type { ElectronSimpleOptions } from './electron/simple'
 
 import fs from 'node:fs'
@@ -191,7 +191,7 @@ export async function electronWithUpdater(
     useNotBundle = true,
   } = options
   if (!pkg || !pkg.version || !pkg.name || !pkg.main) {
-    log.error('package.json not found or invalid', { timestamp: true })
+    log.error('package.json not found or invalid, must contains version, name and main field', { timestamp: true })
     return undefined
   }
   const isESM = pkg.type === 'module'
@@ -216,7 +216,7 @@ export async function electronWithUpdater(
     buildVersionOption,
     postBuild,
     cert,
-  } = parseOptions(isBuild, pkg, sourcemap, minify, updater)
+  } = await parseOptions(isBuild, pkg, sourcemap, minify, updater)
   const { entryOutputDirPath, nativeModuleEntryMap, appEntryPath, external } = buildEntryOption
 
   try {
@@ -317,7 +317,7 @@ export async function electronWithUpdater(
       ),
     },
     preload: {
-      input: _preload.files,
+      input: _preload?.files,
       vite: mergeConfig(
         {
           plugins: [
@@ -349,7 +349,7 @@ export async function electronWithUpdater(
           },
           define,
         } satisfies InlineConfig,
-        _preload.vite ?? {},
+        _preload?.vite ?? {},
       ),
     },
   }

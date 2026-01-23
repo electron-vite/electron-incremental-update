@@ -23,13 +23,13 @@ export type CertSubject = {
   value: string
 }[]
 
-export function generateKeyPair(
+export async function generateKeyPair(
   keyLength: number,
   subject: CertSubject,
   days: number,
   privateKeyPath: string,
   certPath: string,
-): void {
+): Promise<void> {
   const privateKeyDir = path.dirname(privateKeyPath)
   if (!fs.existsSync(privateKeyDir)) {
     fs.mkdirSync(privateKeyDir, { recursive: true })
@@ -40,10 +40,15 @@ export function generateKeyPair(
     fs.mkdirSync(certDir, { recursive: true })
   }
 
-  const { cert, private: privateKey } = generate(subject, {
+  const startDate = new Date()
+  const endDate = new Date(startDate)
+  endDate.setDate(startDate.getDate() + days)
+
+  const { cert, private: privateKey } = await generate(subject, {
     keySize: keyLength,
     algorithm: 'sha256',
-    days,
+    notBeforeDate: startDate,
+    notAfterDate: endDate,
   })
 
   fs.writeFileSync(privateKeyPath, privateKey.replace(/\r\n?/g, '\n'))
@@ -58,13 +63,13 @@ export type GetKeysOption = {
   days: number
 }
 
-export function parseKeys({
+export async function parseKeys({
   keyLength,
   privateKeyPath,
   certPath,
   subject,
   days,
-}: GetKeysOption): { privateKey: string, cert: string } {
+}: GetKeysOption): Promise<{ privateKey: string; cert: string} > {
   const keysDir = path.dirname(privateKeyPath)
   let privateKey = process.env.UPDATER_PK
   let cert = process.env.UPDATER_CERT
@@ -80,7 +85,7 @@ export function parseKeys({
 
   if (!fs.existsSync(privateKeyPath) || !fs.existsSync(certPath)) {
     log.info('No key pair found, generate new key pair', { timestamp: true })
-    generateKeyPair(keyLength, parseSubjects(subject), days, privateKeyPath, certPath)
+    await generateKeyPair(keyLength, parseSubjects(subject), days, privateKeyPath, certPath)
   }
 
   privateKey = fs.readFileSync(privateKeyPath, 'utf-8')

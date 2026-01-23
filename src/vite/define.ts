@@ -52,6 +52,11 @@ export function defineElectronConfig(
     const result = options.renderer ?? {}
     result.plugins ??= []
     result.plugins.push(electronPlugin)
+    const rendererDistPath = options.updater?.paths?.rendererDistPath
+    if (rendererDistPath) {
+      result.build ??= {}
+      result.build.outDir = rendererDistPath
+    }
     return result
   }
 }

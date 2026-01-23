@@ -104,9 +104,12 @@ export async function buildEntry(
         sourcemap,
         minify,
         outDir: entryOutputDirPath,
+        emptyOutDir: true,
         rolldownOptions: {
           external,
+          platform: 'node',
           output: {
+            polyfillRequire: false,
             format: isESM ? 'esm' : 'cjs',
             dynamicImportInCjs: !ignoreDynamicRequires
           }

@@ -14,7 +14,8 @@ export interface PKG {
   name: string
   version: string
   main: string
-  type: 'commonjs' | 'module'
+  type?: 'commonjs' | 'module'
+  dependencies?: Record<string, string>
 }
 
 interface ViteOverride {
@@ -45,7 +46,7 @@ export interface ElectronWithUpdaterOptions {
   isBuild: boolean
   /**
    * Manually setup package.json, read name, version and main,
-   * use `local-pkg` of `loadPackageJSON()` to load package.json by default
+   * use `local-pkg`'s `loadPackageJSON()` to load package.json by default
    * ```ts
    * import pkg from './package.json'
    * ```
@@ -104,7 +105,7 @@ export interface ElectronWithUpdaterOptions {
    *
    * To change output directories, use `options.updater.paths.electronDistPath` instead
    */
-  preload: {
+  preload?: {
     /**
      * Shortcut of `build.rolldownOptions.input`.
      *
@@ -377,13 +378,13 @@ type ParseOptionReturn = {
   cert: string
 }
 
-export function parseOptions(
+export async function parseOptions(
   isBuild: boolean,
   pkg: PKG,
   sourcemap = false,
   minify = false,
   options: UpdaterOptions = {},
-): ParseOptionReturn {
+): Promise<ParseOptionReturn> {
   const {
     minimumVersion = '0.0.0',
     entry: {
@@ -449,7 +450,7 @@ export function parseOptions(
     external,
   }
   // generate keys or get from file
-  const { privateKey, cert } = parseKeys({
+  const { privateKey, cert } = await parseKeys({
     keyLength,
     privateKeyPath,
     certPath,

@@ -20,12 +20,12 @@ describe('test aes', () => {
     expect(aesDecrypt(e, k, iv)).toBe(plain)
   })
 })
-describe('test verify', () => {
+describe('test verify', async () => {
   const buffer = Buffer.from(plain, 'utf-8')
   const dir = join(__dirname.replace(/\\/g, '/'), '/keys')
   const privateKeyPath = join(dir, '/keys/key.pem')
   const certPath = join(dir, '/keys/cert.pem')
-  generateKeyPair(2048, [{ name: 'commonName', value: 'test' }, { name: 'organizationName', value: 'org.test' }], 365, privateKeyPath, certPath)
+  await generateKeyPair(2048, [{ name: 'commonName', value: 'test' }, { name: 'organizationName', value: 'org.test' }], 365, privateKeyPath, certPath)
   const privateKey = readFileSync(privateKeyPath, { encoding: 'utf-8' })
   const cert = readFileSync(certPath, { encoding: 'utf-8' })
   const version = '0.0.0-alpha1'
