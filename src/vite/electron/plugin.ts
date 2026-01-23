@@ -29,7 +29,9 @@ export function notBundle(options: NotBundleOptions = {}): Plugin {
         id: bareImportRE,
       },
       async handler(source, importer) {
-        if (!importer || importer.includes('node_modules/')) {return}
+        if (!importer || importer.includes('node_modules/')) {
+          return
+        }
         if (externalIds.has(source)) {
           return { id: source, external: true }
         }
@@ -39,7 +41,9 @@ export function notBundle(options: NotBundleOptions = {}): Plugin {
         })
 
         const id = resolved?.id
-        if (!id || !nodeModulesRE.test(id) || options.filter?.(id) === false) {return}
+        if (!id || !nodeModulesRE.test(id) || options.filter?.(id) === false) {
+          return
+        }
 
         try {
           // Because we build Main process into `cjs`, so a npm-pkg can be loaded by `require()`.

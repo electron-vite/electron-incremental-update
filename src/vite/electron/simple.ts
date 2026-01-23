@@ -1,10 +1,12 @@
-import { loadPackageJSON } from 'local-pkg'
-import { mergeConfig } from 'vite';
-import type { Plugin, UserConfig } from 'vite';
+import type { Plugin, UserConfig } from 'vite'
 
-import electron from './core';
-import type { ElectronOptions } from './core';
-import type { RolldownOptions } from './utils';
+import { loadPackageJSON } from 'local-pkg'
+import { mergeConfig } from 'vite'
+
+import type { ElectronOptions } from './core'
+import type { RolldownOptions } from './utils'
+
+import electron from './core'
 
 export interface ElectronSimpleOptions {
   main: ElectronOptions

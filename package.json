@@ -1,6 +1,6 @@
 {
   "name": "electron-incremental-update",
-  "version": "2.4.3",
+  "version": "3.0.0-beta.1",
   "description": "Electron incremental update tools with Vite plugin, support bytecode protection",
   "keywords": [
     "bytecode",
@@ -61,7 +61,7 @@
     "dev": "tsdown --watch",
     "build": "tsdown",
     "play": "cd ./playground && vite",
-    "release": "pnpm test && pnpm run build && bumpp --all && npm publish",
+    "release": "bun run format && bun run lint && bun run test && bun run build && bumpp --all",
     "test": "bun test",
     "test:dev": "bun test --watch",
     "format": "oxfmt",
