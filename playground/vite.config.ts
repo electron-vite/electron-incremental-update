@@ -1,19 +1,10 @@
 import { defineElectronConfig } from '../src/vite'
 
 export default defineElectronConfig({
-  // todo)) pkg can be a path to package.json
-  // pkg: {
-  //   main: './dist-entry/entry.js',
-  //   name: 'test',
-  //   type: 'commonjs',
-  //   version: '0.0.1'
-  // },
+  entry: { files: ['./entry.ts', './native.ts'] },
   main: { files: './main.ts' },
-  updater: {
-    entry: {
-      appEntryPath: './entry.ts',
-    },
-  },
+  preload: { files: './preload.ts' },
   // todo)) new `root` in top level. create package.json if not exist
   renderer: {},
+  updater: {},
 })

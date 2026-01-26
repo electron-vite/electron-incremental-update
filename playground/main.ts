@@ -1,15 +1,19 @@
 import { app, BrowserWindow } from 'electron'
 
 import { startupWithUpdater } from '../src/entry'
+import { getPathFromPreload, loadPage, requireNative } from '../src/utils'
 
 export default startupWithUpdater(() => {
   app
     .whenReady()
     .then(() => import('./utils'))
     .then((util) => console.log(util.data))
+    .then(() => requireNative('native'))
     .then(() => {
-      new BrowserWindow({
+      const win = new BrowserWindow({
         title: 'Main window',
+        webPreferences: { preload: getPathFromPreload('preload.mjs') },
       })
+      loadPage(win)
     })
 })

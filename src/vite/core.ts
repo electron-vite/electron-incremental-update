@@ -13,12 +13,12 @@ import type { ElectronWithUpdaterOptions, PKG } from './option'
 
 import { buildAsar, buildEntry, buildUpdateJson } from './build'
 import { bytecodePlugin } from './bytecode'
-import { bytecodeLog, id, log } from './constant'
+import { id, log } from './constant'
 import { startup } from './electron/core'
 import { notBundle } from './electron/plugin'
 import ElectronSimple from './electron/simple'
 import { parseOptions } from './option'
-import { copyAndSkipIfExist } from './utils'
+import { copyAndSkipIfExist, resolveInputToArray } from './utils'
 
 type StartupFn = NonNullable<NonNullable<ElectronSimpleOptions['main']>['onstart']>
 
@@ -183,7 +183,7 @@ export async function electronWithUpdater(
 ): Promise<PluginOption[] | undefined> {
   let {
     isBuild,
-    pkg = (await loadPackageJSON()) as PKG | null,
+    entry: _entry,
     main: _main,
     preload: _preload,
     sourcemap = !isBuild,
@@ -193,6 +193,8 @@ export async function electronWithUpdater(
     bytecode,
     useNotBundle = true,
   } = options
+
+  const pkg = await loadPackageJSON()
   if (!pkg || !pkg.version || !pkg.name || !pkg.main) {
     log.error('package.json not found or invalid, must contains version, name and main field', {
       timestamp: true,
@@ -205,16 +207,15 @@ export async function electronWithUpdater(
     typeof bytecode === 'object' ? bytecode : bytecode === true ? { enable: true } : undefined
 
   if (isESM && bytecodeOptions?.enable) {
-    bytecodeLog.warn(
+    throw new Error(
       '`bytecodePlugin` does not support ES module, please remove "type": "module" in package.json',
-      { timestamp: true },
     )
-    bytecodeOptions = undefined
   }
 
   const { buildAsarOption, buildEntryOption, buildVersionOption, postBuild, cert } =
-    await parseOptions(isBuild, pkg, sourcemap, minify, updater)
-  const { entryOutputDirPath, nativeModuleEntryMap, appEntryPath, external } = buildEntryOption
+    await parseOptions(isBuild, pkg as PKG, sourcemap, minify, _entry, updater)
+
+  const { outDir: entryOutputDirPath, files, external } = buildEntryOption
 
   try {
     fs.rmSync(buildAsarOption.electronDistPath, { recursive: true, force: true })
@@ -232,7 +233,7 @@ export async function electronWithUpdater(
   const define = {
     __EIU_ASAR_BASE_NAME__: JSON.stringify(path.basename(buildAsarOption.asarOutputPath)),
     __EIU_ELECTRON_DIST_PATH__: JSON.stringify(normalizePath(buildAsarOption.electronDistPath)),
-    __EIU_ENTRY_DIST_PATH__: JSON.stringify(normalizePath(buildEntryOption.entryOutputDirPath)),
+    __EIU_ENTRY_DIST_PATH__: JSON.stringify(normalizePath(buildEntryOption.outDir)),
     __EIU_IS_DEV__: JSON.stringify(!isBuild),
     __EIU_IS_ESM__: JSON.stringify(isESM),
     __EIU_MAIN_FILE__: JSON.stringify(getMainFileBaseName(_main.files)),
@@ -301,6 +302,7 @@ export async function electronWithUpdater(
             rolldownOptions: {
               external,
               output: {
+                polyfillRequire: false,
                 format: isESM ? 'esm' : 'cjs',
               },
             },
@@ -311,7 +313,7 @@ export async function electronWithUpdater(
       ),
     },
     preload: {
-      input: _preload?.files,
+      input: _preload.files,
       vite: mergeConfig(
         {
           plugins: [
@@ -342,6 +344,9 @@ export async function electronWithUpdater(
             outDir: `${buildAsarOption.electronDistPath}/preload`,
             rolldownOptions: {
               external,
+              output: {
+                polyfillRequire: false,
+              },
             },
           },
           define,
@@ -353,10 +358,8 @@ export async function electronWithUpdater(
 
   const result: PluginOption[] = [ElectronSimple(electronPluginOptions)]
 
-  if (nativeModuleEntryMap) {
-    const files = [...Object.values(nativeModuleEntryMap), appEntryPath].map((file) =>
-      path.resolve(normalizePath(file)),
-    )
+  if (files) {
+    const watchFiles = resolveInputToArray(files).map((file) => path.resolve(normalizePath(file)))
 
     result.push({
       name: `${id}-dev`,
@@ -364,8 +367,8 @@ export async function electronWithUpdater(
         return !isBuild
       },
       configureServer(server) {
-        server.watcher.add(files).on('change', async (p) => {
-          if (!files.includes(p)) {
+        server.watcher.add(watchFiles).on('change', async (p) => {
+          if (!watchFiles.includes(p)) {
             return
           }
           await _buildEntry()

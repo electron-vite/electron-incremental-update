@@ -47,6 +47,9 @@ export default defineConfig([
     format: ['esm', 'cjs'],
     dts: { oxc: true },
     inlineOnly: ['@subframe7536/type-utils'],
+    outputOptions: {
+      polyfillRequire: false,
+    },
     exports: true,
     external: ['electron'],
     define: {

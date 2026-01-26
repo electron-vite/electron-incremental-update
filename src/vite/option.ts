@@ -46,14 +46,6 @@ export interface ElectronWithUpdaterOptions {
    */
   isBuild: boolean
   /**
-   * Manually setup package.json, read name, version and main,
-   * use `local-pkg`'s `loadPackageJSON()` to load package.json by default
-   * ```ts
-   * import pkg from './package.json'
-   * ```
-   */
-  pkg?: PKG
-  /**
    * Whether to generate sourcemap
    * @default !isBuild
    */
@@ -81,6 +73,11 @@ export interface ElectronWithUpdaterOptions {
    * @default isCI
    */
   buildVersionJson?: boolean
+
+  /**
+   * Options for entry (app.asar)
+   */
+  entry?: BuildEntryOption
   /**
    * Main process options
    *
@@ -106,7 +103,7 @@ export interface ElectronWithUpdaterOptions {
    *
    * To change output directories, use `options.updater.paths.electronDistPath` instead
    */
-  preload?: {
+  preload: {
     /**
      * Shortcut of `build.rolldownOptions.input`.
      *
@@ -153,20 +150,12 @@ export interface BuildEntryOption {
    * Path to app entry output file
    * @default 'dist-entry'
    */
-  entryOutputDirPath?: string
+  outDir?: string
   /**
    * Path to app entry file
    * @default 'electron/entry.ts'
    */
-  appEntryPath?: string
-  /**
-   * Vite input options of native modules in entry directory
-   *
-   * @default {}
-   * @example
-   * { db: './electron/native/db.ts' }
-   */
-  nativeModuleEntryMap?: Record<string, string>
+  files?: NonNullable<ElectronOptions['entry']>
   /**
    * Skip process dynamic require
    *
@@ -197,7 +186,7 @@ export interface BuildEntryOption {
    * }
    * ```
    */
-  overrideViteOptions?: InlineConfig
+  vite?: InlineConfig
   /**
    * By default, all the unbundled modules will be packaged by packager like `electron-builder`.
    * If setup, all the `dependencies` in `package.json` will be bundled by default, and you need
@@ -290,10 +279,6 @@ interface UpdaterOptions {
    */
   minimumVersion?: string
   /**
-   * Options for entry (app.asar)
-   */
-  entry?: BuildEntryOption
-  /**
    * Options for paths
    */
   paths?: {
@@ -384,29 +369,29 @@ export async function parseOptions(
   pkg: PKG,
   sourcemap = false,
   minify = false,
+  entry: BuildEntryOption = {},
   options: UpdaterOptions = {},
 ): Promise<ParseOptionReturn> {
   const {
+    minify: entryMinify,
+    sourcemap: entrySourcemap,
+    outDir = 'dist-entry',
+    files = 'electron/entry.ts',
+    postBuild,
+    ignoreDynamicRequires = false,
+    external = [
+      /^node:.*/,
+      /.*\.(node|dll|dylib|so)$/,
+      'original-fs',
+      'electron',
+      ...(isBuild || postBuild
+        ? []
+        : Object.keys('dependencies' in pkg ? (pkg.dependencies as object) : {})),
+    ],
+    vite = {},
+  } = entry
+  const {
     minimumVersion = '0.0.0',
-    entry: {
-      minify: entryMinify,
-      sourcemap: entrySourcemap,
-      entryOutputDirPath = 'dist-entry',
-      appEntryPath = 'electron/entry.ts',
-      nativeModuleEntryMap = {},
-      postBuild,
-      ignoreDynamicRequires = false,
-      external = [
-        /^node:.*/,
-        /.*\.(node|dll|dylib|so)$/,
-        'original-fs',
-        'electron',
-        ...(isBuild || postBuild
-          ? []
-          : Object.keys('dependencies' in pkg ? (pkg.dependencies as object) : {})),
-      ],
-      overrideViteOptions = {},
-    } = {},
     paths: {
       asarOutputPath = `release/${pkg.name}.asar`,
       gzipPath = `release/${pkg.name}-${pkg.version}.asar.gz`,
@@ -443,10 +428,9 @@ export async function parseOptions(
   const buildEntryOption: Required<Omit<BuildEntryOption, 'postBuild'>> = {
     minify: entryMinify ?? minify,
     sourcemap: entrySourcemap ?? sourcemap,
-    entryOutputDirPath,
-    appEntryPath,
-    nativeModuleEntryMap,
-    overrideViteOptions,
+    outDir,
+    files,
+    vite,
     ignoreDynamicRequires,
     external,
   }

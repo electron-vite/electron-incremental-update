@@ -80,29 +80,25 @@ export async function buildEntry(
   {
     sourcemap,
     minify,
-    appEntryPath,
-    entryOutputDirPath,
-    nativeModuleEntryMap,
+    files,
+    outDir,
     ignoreDynamicRequires,
     external,
-    overrideViteOptions,
+    vite,
   }: Required<Omit<BuildEntryOption, 'postBuild'>>,
   isESM: boolean,
   define: Record<string, string>,
   bytecodeOptions: BytecodeOptions | undefined,
 ): Promise<void> {
   await build({
-    entry: {
-      entry: appEntryPath,
-      ...nativeModuleEntryMap,
-    },
+    entry: files,
     vite: mergeConfig<InlineConfig, InlineConfig>(
       {
         plugins: [bytecodeOptions && bytecodePlugin('main', bytecodeOptions)],
         build: {
           sourcemap,
           minify,
-          outDir: entryOutputDirPath,
+          outDir,
           emptyOutDir: true,
           rolldownOptions: {
             external,
@@ -116,7 +112,7 @@ export async function buildEntry(
         },
         define,
       },
-      overrideViteOptions ?? {},
+      vite ?? {},
     ),
   })
 }

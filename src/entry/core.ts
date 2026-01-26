@@ -82,7 +82,12 @@ export interface AppOption {
 export function startupWithUpdater(
   fn: (updater: Updater) => Promisable<void>,
 ): (updater: Updater) => Promisable<void> {
+  console.log(typeof fn)
   return fn
+}
+
+function runWithDefaultExport(mod: any, args: any) {
+  return (mod.default || mod)(args)
 }
 
 const defaultOnInstall: OnInstallFunction = (install, _, __, logger) => {
@@ -147,10 +152,10 @@ export async function createElectronApp(appOptions: AppOption = {}): Promise<voi
     await beforeStart?.(mainPath, logger)
 
     if (__EIU_IS_ESM__) {
-      ;(await import(`file://${mainPath}`)).default(updaterInstance)
+      runWithDefaultExport(await import(`file://${mainPath}`), updaterInstance)
     } else {
       // oxlint-disable-next-line typescript/no-var-requires
-      require(mainPath)(updaterInstance)
+      runWithDefaultExport(require(mainPath), updaterInstance)
     }
   } catch (error) {
     logger?.error('startup error, exit', error)
