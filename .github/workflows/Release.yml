@@ -25,7 +25,7 @@ jobs:
 
       - run: bun ci
       - run: bun run build
-      - run: npm publish
+      - run: npm publish --tag latest
       - run: bunx changelogithub
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
