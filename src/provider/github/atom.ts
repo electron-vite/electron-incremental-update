@@ -1,5 +1,3 @@
-import type { BaseGitHubProviderOptions } from './base'
-
 import { defaultDownloadText } from '../../utils/download'
 import { BaseGitHubProvider } from './base'
 
@@ -14,9 +12,6 @@ import { BaseGitHubProvider } from './base'
  */
 export class GitHubAtomProvider extends BaseGitHubProvider {
   public name = 'GithubAtomProvider'
-  constructor(options: BaseGitHubProviderOptions) {
-    super(options)
-  }
 
   protected getHeaders(accept: string): Record<string, string> {
     return { Accept: `application/${accept}`, ...this.options.extraHeaders }
