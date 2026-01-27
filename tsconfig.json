@@ -1,1 +1,4 @@
-{ "extends": "@subframe7536/type-utils/tsconfig.json" }
+{
+  "extends": "@subframe7536/type-utils/tsconfig.json",
+  "include": ["src", "tests", "playground"]
+}

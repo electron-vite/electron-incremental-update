@@ -1,4 +1,6 @@
-import { BrowserWindow, app } from 'electron'
+import type { BrowserWindow } from 'electron'
+
+import { app } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -263,14 +265,11 @@ export function handleUnexpectedErrors(callback: (err: unknown) => void): void {
   process.on('unhandledRejection', callback)
 }
 
+/**
+ * @deprecated No longer needed. It is embeded in `startupWithUpdater()
+ */
 export function reloadOnPreloadScriptChanged(): void {
-  if (isDev) {
-    process.on('message', (msg) => {
-      if (msg === 'electron-vite&type=hot-reload') {
-        for (const window of BrowserWindow.getAllWindows()) {
-          window.reload()
-        }
-      }
-    })
-  }
+  console.warn(
+    '`reloadOnPreloadScriptChange()` is no longer needed. It is embeded in `startupWithUpdater()`',
+  )
 }

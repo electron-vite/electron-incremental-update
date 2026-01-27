@@ -1,6 +1,6 @@
 import type { Promisable } from '@subframe7536/type-utils'
 
-import { app } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -82,7 +82,15 @@ export interface AppOption {
 export function startupWithUpdater(
   fn: (updater: Updater) => Promisable<void>,
 ): (updater: Updater) => Promisable<void> {
-  console.log(typeof fn)
+  if (isDev) {
+    process.on('message', (msg) => {
+      if (msg === 'electron-vite&type=hot-reload') {
+        for (const window of BrowserWindow.getAllWindows()) {
+          window.reload()
+        }
+      }
+    })
+  }
   return fn
 }
 
@@ -158,7 +166,7 @@ export async function createElectronApp(appOptions: AppOption = {}): Promise<voi
       runWithDefaultExport(require(mainPath), updaterInstance)
     }
   } catch (error) {
-    logger?.error('startup error, exit', error)
+    logger?.error('Fail to startup', error)
     onStartError?.(error, logger)
     app.quit()
   }

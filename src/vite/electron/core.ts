@@ -3,18 +3,7 @@ import type { Plugin, ConfigEnv, UserConfig, LibraryOptions, InlineConfig } from
 
 import { build as viteBuild, version } from 'vite'
 
-import {
-  resolveServerUrl,
-  resolveViteConfig,
-  resolveInput,
-  mockIndexHtml,
-  withExternalBuiltins,
-  treeKillSync,
-} from './utils'
-
-// public utils
-export { resolveViteConfig, withExternalBuiltins }
-export { loadPackageJSON, loadPackageJSONSync } from 'local-pkg'
+import { resolveViteConfig, resolveInput, mockIndexHtml, treeKillSync } from './utils'
 
 export interface ElectronOptions {
   /**
@@ -42,11 +31,14 @@ export interface ElectronOptions {
   }) => void | Promise<void>
 }
 
-export function build(options: ElectronOptions): ReturnType<typeof viteBuild> {
-  return viteBuild(withExternalBuiltins(resolveViteConfig(options)))
+export function build(isESM: boolean, options: ElectronOptions): ReturnType<typeof viteBuild> {
+  return viteBuild(resolveViteConfig(isESM, options))
 }
 
-export default function electron(options: ElectronOptions | ElectronOptions[]): Plugin[] {
+export default function electron(
+  isESM: boolean,
+  options: ElectronOptions | ElectronOptions[],
+): Plugin[] {
   const optionsArray = Array.isArray(options) ? options : [options]
   let userConfig: UserConfig
   let configEnv: ConfigEnv
@@ -65,7 +57,7 @@ export default function electron(options: ElectronOptions | ElectronOptions[]): 
       configureServer(server) {
         server.httpServer?.once('listening', () => {
           Object.assign(process.env, {
-            VITE_DEV_SERVER_URL: resolveServerUrl(server),
+            VITE_DEV_SERVER_URL: server.resolvedUrls?.local[0],
           })
 
           const entryCount = optionsArray.length
@@ -115,7 +107,7 @@ export default function electron(options: ElectronOptions | ElectronOptions[]): 
                 }
               },
             })
-            build(options)
+            build(isESM, options)
           }
         })
       },
@@ -145,7 +137,7 @@ export default function electron(options: ElectronOptions | ElectronOptions[]): 
           options.vite.root ??= userConfig.root
           options.vite.envDir ??= userConfig.envDir
           options.vite.envPrefix ??= userConfig.envPrefix
-          await build(options)
+          await build(isESM, options)
         }
       },
     },

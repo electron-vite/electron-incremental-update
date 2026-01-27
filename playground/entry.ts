@@ -1,3 +1,10 @@
 import { createElectronApp } from '../src/entry'
 
-createElectronApp()
+createElectronApp({
+  beforeStart(mainFilePath, logger) {
+    logger?.info(mainFilePath)
+  },
+  updater: {
+    logger: console,
+  },
+})

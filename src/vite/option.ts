@@ -19,13 +19,19 @@ export interface PKG {
   dependencies?: Record<string, string>
 }
 
-interface ViteOverride {
+interface CommonBuildOption {
+  /**
+   * Shortcut of `build.rolldownOptions.input`
+   */
+  files: NonNullable<ElectronOptions['entry']>
   /**
    * Override vite options
    */
   vite?: ElectronOptions['vite'] & {
     build?: {
       outDir: never
+      sourcemap: never
+      minify: never
       rolldownOptions?: {
         output?: {
           dir: never
@@ -73,21 +79,75 @@ export interface ElectronWithUpdaterOptions {
    * @default isCI
    */
   buildVersionJson?: boolean
-
+  /**
+   * `external` option in `build.rolldownOptions`,
+   * default is node built-in modules or native modules.
+   *
+   * If is in dev and `entry.postBuild` is not setup, will also
+   * external `dependencies` in `package.json`
+   */
+  external?: NonNullable<NonNullable<InlineConfig['build']>['rolldownOptions']>['external']
   /**
    * Options for entry (app.asar)
+   *
+   * To change output directories, use `options.updater.paths.electronDistPath` instead
    */
-  entry?: BuildEntryOption
+  entry: {
+    /**
+     * By default, all the unbundled modules will be packaged by packager like `electron-builder`.
+     * If setup, all the `dependencies` in `package.json` will be bundled by default, and you need
+     * to manually handle the native module files.
+     *
+     * If you are using `electron-buidler`, don't forget to append `'!node_modules/**'` in
+     * electron-build config's `files` array
+     */
+    postBuild?: (args: {
+      /**
+       * Whether is in build mode
+       */
+      isBuild: boolean
+      /**
+       * Get path from `entryOutputDirPath`
+       */
+      getPathFromEntryOutputDir: (...paths: string[]) => string
+      /**
+       * Check exist and copy file to `entryOutputDirPath`
+       *
+       * If `to` absent, set to `basename(from)`
+       *
+       * If `skipIfExist` absent, skip copy if `to` exist
+       */
+      copyToEntryOutputDir: (options: {
+        from: string
+        to?: string
+        /**
+         * Skip copy if `to` exist
+         * @default true
+         */
+        skipIfExist?: boolean
+      }) => void
+      /**
+       * Copy specified modules to entry output dir, just like `external` option in rolldown
+       */
+      copyModules: (options: {
+        /**
+         * External Modules
+         */
+        modules: string[]
+        /**
+         * Skip copy if `to` exist
+         * @default true
+         */
+        skipIfExist?: boolean
+      }) => void
+    }) => Promisable<void>
+  } & CommonBuildOption
   /**
    * Main process options
    *
    * To change output directories, use `options.updater.paths.electronDistPath` instead
    */
   main: {
-    /**
-     * Shortcut of `build.rolldownOptions.input`
-     */
-    files: NonNullable<ElectronOptions['entry']>
     /**
      * Electron App startup function.
      *
@@ -97,27 +157,20 @@ export interface ElectronWithUpdaterOptions {
      * @param customElectronPkg custom electron package name (default: 'electron')
      */
     onstart?: ElectronOptions['onstart']
-  } & ViteOverride
+  } & CommonBuildOption
   /**
    * Preload process options
    *
    * To change output directories, use `options.updater.paths.electronDistPath` instead
    */
-  preload: {
-    /**
-     * Shortcut of `build.rolldownOptions.input`.
-     *
-     * Preload scripts may contain Web assets, so use the `build.rolldownOptions.input` instead `build.lib.entry`.
-     */
-    files: NonNullable<ElectronOptions['entry']>
-  } & ViteOverride
+  preload?: CommonBuildOption
   /**
    * Updater options
    */
   updater?: UpdaterOptions
 }
 
-export interface BuildAsarOption {
+export interface _BuildAsarOption {
   version: string
   asarOutputPath: string
   gzipPath: string
@@ -126,7 +179,7 @@ export interface BuildAsarOption {
   generateGzipFile: NonNullable<GeneratorOverrideFunctions['generateGzipFile']>
 }
 
-export interface BuildVersionOption {
+export interface _BuildVersionOption {
   version: string
   minimumVersion: string
   privateKey: string
@@ -134,107 +187,6 @@ export interface BuildVersionOption {
   versionPath: string
   generateSignature: NonNullable<GeneratorOverrideFunctions['generateSignature']>
   generateUpdateJson: NonNullable<GeneratorOverrideFunctions['generateUpdateJson']>
-}
-
-export interface BuildEntryOption {
-  /**
-   * Override to minify on entry
-   * @default isBuild
-   */
-  minify?: boolean
-  /**
-   * Override to generate sourcemap on entry
-   */
-  sourcemap?: boolean
-  /**
-   * Path to app entry output file
-   * @default 'dist-entry'
-   */
-  outDir?: string
-  /**
-   * Path to app entry file
-   * @default 'electron/entry.ts'
-   */
-  files?: NonNullable<ElectronOptions['entry']>
-  /**
-   * Skip process dynamic require
-   *
-   * Useful for `better-sqlite3` and other old packages
-   */
-  ignoreDynamicRequires?: boolean
-  /**
-   * `external` option in `build.rolldownOptions`,
-   * default is node built-in modules or native modules.
-   *
-   * If is in dev and {@link postBuild} is not setup, will also
-   * external `dependencies` in `package.json`
-   */
-  external?: NonNullable<NonNullable<InlineConfig['build']>['rolldownOptions']>['external']
-  /**
-   * Custom options for `vite` build
-   * ```ts
-   * const options = {
-   *   plugins: [esm(), bytecodePlugin()], // load on needed
-   *   build: {
-   *     sourcemap,
-   *     minify,
-   *     outDir: entryOutputDirPath,
-   *     commonjsOptions: { ignoreDynamicRequires },
-   *     rolldownOptions: { external },
-   *   },
-   *   define,
-   * }
-   * ```
-   */
-  vite?: InlineConfig
-  /**
-   * By default, all the unbundled modules will be packaged by packager like `electron-builder`.
-   * If setup, all the `dependencies` in `package.json` will be bundled by default, and you need
-   * to manually handle the native module files.
-   *
-   * If you are using `electron-buidler`, don't forget to append `'!node_modules/**'` in
-   * electron-build config's `files` array
-   */
-  postBuild?: (args: {
-    /**
-     * Whether is in build mode
-     */
-    isBuild: boolean
-    /**
-     * Get path from `entryOutputDirPath`
-     */
-    getPathFromEntryOutputDir: (...paths: string[]) => string
-    /**
-     * Check exist and copy file to `entryOutputDirPath`
-     *
-     * If `to` absent, set to `basename(from)`
-     *
-     * If `skipIfExist` absent, skip copy if `to` exist
-     */
-    copyToEntryOutputDir: (options: {
-      from: string
-      to?: string
-      /**
-       * Skip copy if `to` exist
-       * @default true
-       */
-      skipIfExist?: boolean
-    }) => void
-    /**
-     * Copy specified modules to entry output dir, just like `external` option in rolldown
-     */
-    copyModules: (options: {
-      /**
-       * External Modules
-       */
-      modules: string[]
-      /**
-       * Skip copy if `to` exist
-       * @default true
-       */
-      skipIfExist?: boolean
-    }) => void
-  }) => Promisable<void>
 }
 
 export interface GeneratorOverrideFunctions {
@@ -287,6 +239,11 @@ interface UpdaterOptions {
      * @default `release/${app.name}.asar`
      */
     asarOutputPath?: string
+    /**
+     * Path to app entry output file
+     * @default 'dist-entry'
+     */
+    entryOutDir?: string
     /**
      * Path to version info output, content is {@link UpdateJSON}
      * @default `version.json`
@@ -357,44 +314,22 @@ interface UpdaterOptions {
 }
 
 interface ParseOptionReturn {
-  buildAsarOption: BuildAsarOption
-  buildEntryOption: Required<Omit<BuildEntryOption, 'postBuild'>>
-  buildVersionOption: BuildVersionOption
-  postBuild: BuildEntryOption['postBuild']
+  buildAsarOption: _BuildAsarOption
+  buildVersionOption: _BuildVersionOption
   cert: string
+  entryOutDir: string
 }
 
 export async function parseOptions(
-  isBuild: boolean,
   pkg: PKG,
-  sourcemap = false,
-  minify = false,
-  entry: BuildEntryOption = {},
   options: UpdaterOptions = {},
 ): Promise<ParseOptionReturn> {
-  const {
-    minify: entryMinify,
-    sourcemap: entrySourcemap,
-    outDir = 'dist-entry',
-    files = 'electron/entry.ts',
-    postBuild,
-    ignoreDynamicRequires = false,
-    external = [
-      /^node:.*/,
-      /.*\.(node|dll|dylib|so)$/,
-      'original-fs',
-      'electron',
-      ...(isBuild || postBuild
-        ? []
-        : Object.keys('dependencies' in pkg ? (pkg.dependencies as object) : {})),
-    ],
-    vite = {},
-  } = entry
   const {
     minimumVersion = '0.0.0',
     paths: {
       asarOutputPath = `release/${pkg.name}.asar`,
       gzipPath = `release/${pkg.name}-${pkg.version}.asar.gz`,
+      entryOutDir = 'dist-entry',
       electronDistPath = 'dist-electron',
       rendererDistPath = 'dist',
       versionPath = 'version.json',
@@ -417,22 +352,13 @@ export async function parseOptions(
       generateUpdateJson = defaultVersionJsonGenerator,
     } = {},
   } = options
-  const buildAsarOption: BuildAsarOption = {
+  const buildAsarOption: _BuildAsarOption = {
     version: pkg.version,
     asarOutputPath,
     gzipPath,
     electronDistPath,
     rendererDistPath,
     generateGzipFile,
-  }
-  const buildEntryOption: Required<Omit<BuildEntryOption, 'postBuild'>> = {
-    minify: entryMinify ?? minify,
-    sourcemap: entrySourcemap ?? sourcemap,
-    outDir,
-    files,
-    vite,
-    ignoreDynamicRequires,
-    external,
   }
   // generate keys or get from file
   const { privateKey, cert } = await parseKeys({
@@ -442,7 +368,7 @@ export async function parseOptions(
     subject,
     days,
   })
-  const buildVersionOption: BuildVersionOption = {
+  const buildVersionOption: _BuildVersionOption = {
     version: pkg.version,
     minimumVersion,
     privateKey,
@@ -452,5 +378,5 @@ export async function parseOptions(
     generateUpdateJson,
   }
 
-  return { buildAsarOption, buildEntryOption, buildVersionOption, postBuild, cert }
+  return { buildAsarOption, buildVersionOption, cert, entryOutDir }
 }

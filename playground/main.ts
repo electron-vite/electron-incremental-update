@@ -1,3 +1,4 @@
+// oxlint-disable no-unused-vars
 import { app, BrowserWindow } from 'electron'
 
 import { startupWithUpdater } from '../src/entry'
@@ -11,8 +12,8 @@ export default startupWithUpdater(() => {
     .then(() => requireNative('native'))
     .then(() => {
       const win = new BrowserWindow({
-        title: 'Main window',
-        webPreferences: { preload: getPathFromPreload('preload.mjs') },
+        title: 'Main window1',
+        // webPreferences: { preload: getPathFromPreload('preload.js') },
       })
       loadPage(win)
     })

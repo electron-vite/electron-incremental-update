@@ -1,25 +1,14 @@
-import type { AddressInfo } from 'node:net'
-import type { BuildEnvironmentOptions, InlineConfig, ResolvedConfig, ViteDevServer } from 'vite'
+import type { BuildEnvironmentOptions, InlineConfig, ResolvedConfig } from 'vite'
 
-import { loadPackageJSONSync } from 'local-pkg'
 import cp from 'node:child_process'
 import fs from 'node:fs'
-import { builtinModules } from 'node:module'
 import path from 'node:path'
 import { mergeConfig } from 'vite'
 
 import type { ElectronOptions } from './core'
 
-export interface PidTree {
-  pid: number
-  ppid: number
-  children?: PidTree[]
-}
-
 /** Resolve the default Vite's `InlineConfig` for build Electron-Main */
-export function resolveViteConfig(options: ElectronOptions): InlineConfig {
-  const packageJson = loadPackageJSONSync() ?? {}
-  const esmodule = packageJson.type === 'module'
+export function resolveViteConfig(isESM: boolean, options: ElectronOptions): InlineConfig {
   const defaultConfig: InlineConfig = {
     // 🚧 Avoid recursive build caused by load config file
     configFile: false,
@@ -30,7 +19,7 @@ export function resolveViteConfig(options: ElectronOptions): InlineConfig {
       lib: options.entry && {
         entry: options.entry,
         // Since Electron(28) supports ESModule
-        formats: esmodule ? ['es'] : ['cjs'],
+        formats: isESM ? ['es'] : ['cjs'],
         fileName: () => '[name].js',
       },
       outDir: 'dist-electron',
@@ -51,66 +40,6 @@ export function resolveViteConfig(options: ElectronOptions): InlineConfig {
   }
 
   return mergeConfig(defaultConfig, options?.vite || {})
-}
-
-export function withExternalBuiltins(config: InlineConfig): InlineConfig {
-  const builtins = builtinModules.filter((e) => !e.startsWith('_'))
-  builtins.push('electron', ...builtins.map((m) => `node:${m}`))
-
-  config.build ??= {}
-  config.build.rolldownOptions ??= {}
-
-  let external = config.build.rolldownOptions.external
-  if (Array.isArray(external) || typeof external === 'string' || external instanceof RegExp) {
-    external = builtins.concat(external as string[])
-  } else if (typeof external === 'function') {
-    const original = external
-    external = function (source, importer, isResolved) {
-      if (builtins.includes(source)) {
-        return true
-      }
-      return original(source, importer, isResolved)
-    }
-  } else {
-    external = builtins
-  }
-  config.build.rolldownOptions.external = external
-
-  return config
-}
-
-/**
- * @see https://github.com/vitejs/vite/blob/v4.0.1/packages/vite/src/node/constants.ts#L137-L147
- */
-export function resolveHostname(hostname: string): string {
-  const loopbackHosts = new Set([
-    'localhost',
-    '127.0.0.1',
-    '::1',
-    '0000:0000:0000:0000:0000:0000:0000:0001',
-  ])
-  const wildcardHosts = new Set(['0.0.0.0', '::', '0000:0000:0000:0000:0000:0000:0000:0000'])
-
-  return loopbackHosts.has(hostname) || wildcardHosts.has(hostname) ? 'localhost' : hostname
-}
-
-export function resolveServerUrl(server: ViteDevServer): string | undefined {
-  const addressInfo = server.httpServer?.address()
-  const isAddressInfo = (x: any): x is AddressInfo => x?.address
-
-  if (isAddressInfo(addressInfo)) {
-    const { address, port } = addressInfo
-    const hostname = resolveHostname(address)
-
-    const options = server.config.server
-    const protocol = options.https ? 'https' : 'http'
-    const devBase = server.config.base
-
-    const path = typeof options.open === 'string' ? options.open : devBase
-    const url = path.startsWith('http') ? path : `${protocol}://${hostname}:${port}${path}`
-
-    return url
-  }
 }
 
 export type RolldownOptions = Exclude<BuildEnvironmentOptions['rolldownOptions'], undefined>
@@ -190,6 +119,12 @@ export function treeKillSync(pid: number): void {
   } else {
     killTree(pidTree({ pid, ppid: process.pid }))
   }
+}
+
+export interface PidTree {
+  pid: number
+  ppid: number
+  children?: PidTree[]
 }
 
 function pidTree(tree: PidTree) {

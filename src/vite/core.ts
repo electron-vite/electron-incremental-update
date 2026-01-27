@@ -5,20 +5,33 @@ import type { InlineConfig, PluginOption } from 'vite'
 import { isCI } from 'ci-info'
 import { getPackageInfoSync, loadPackageJSON } from 'local-pkg'
 import fs from 'node:fs'
+import { builtinModules } from 'node:module'
 import path from 'node:path'
 import { mergeConfig, normalizePath } from 'vite'
 
-import type { ElectronSimpleOptions } from './electron/simple'
+import type { ElectronOptions } from './electron/core'
+import type { RolldownOptions } from './electron/utils'
 import type { ElectronWithUpdaterOptions, PKG } from './option'
 
-import { buildAsar, buildEntry, buildUpdateJson } from './build'
+import { buildAsar, buildUpdateJson } from './build'
 import { bytecodePlugin } from './bytecode'
 import { id, log } from './constant'
-import { startup } from './electron/core'
+import electron from './electron/core'
 import { notBundle } from './electron/plugin'
-import ElectronSimple from './electron/simple'
 import { parseOptions } from './option'
-import { copyAndSkipIfExist, resolveInputToArray } from './utils'
+import { copyAndSkipIfExist } from './utils'
+
+export interface ElectronSimpleOptions {
+  main: ElectronOptions
+  preload?: Omit<ElectronOptions, 'entry'> & {
+    /**
+     * Shortcut of `build.rolldownOptions.input`.
+     *
+     * Preload scripts may contain Web assets, so use the `build.rolldownOptions.input` instead `build.lib.entry`.
+     */
+    input: RolldownOptions['input']
+  }
+}
 
 type StartupFn = NonNullable<NonNullable<ElectronSimpleOptions['main']>['onstart']>
 
@@ -35,7 +48,7 @@ type StartupFn = NonNullable<NonNullable<ElectronSimpleOptions['main']>['onstart
  *   },
  * })
  */
-export const debugStartup: StartupFn = async (args) => {
+export const debugStartup: StartupFn = async (args: Parameters<StartupFn>[0]) => {
   if (process.env.VSCODE_DEBUG) {
     // For `.vscode/.debug.script.mjs`
     console.log('[startup] Electron App')
@@ -196,12 +209,18 @@ export async function electronWithUpdater(
 
   const pkg = await loadPackageJSON()
   if (!pkg || !pkg.version || !pkg.name || !pkg.main) {
-    log.error('package.json not found or invalid, must contains version, name and main field', {
-      timestamp: true,
-    })
-    return undefined
+    throw new Error('package.json not found or invalid, must contains version, name and main field')
   }
+  log.info(`Clear cache files`, { timestamp: true })
   const isESM = pkg.type === 'module'
+  const external = [
+    ...builtinModules,
+    'electron',
+    /^node:/,
+    /.*\.(node|dll|dylib|so)$/,
+    'original-fs',
+    ...(isBuild || _entry.postBuild ? [] : Object.keys(pkg.dependencies || {})),
+  ]
 
   let bytecodeOptions =
     typeof bytecode === 'object' ? bytecode : bytecode === true ? { enable: true } : undefined
@@ -212,28 +231,22 @@ export async function electronWithUpdater(
     )
   }
 
-  const { buildAsarOption, buildEntryOption, buildVersionOption, postBuild, cert } =
-    await parseOptions(isBuild, pkg as PKG, sourcemap, minify, _entry, updater)
-
-  const { outDir: entryOutputDirPath, files, external } = buildEntryOption
-
-  try {
-    fs.rmSync(buildAsarOption.electronDistPath, { recursive: true, force: true })
-    fs.rmSync(entryOutputDirPath, { recursive: true, force: true })
-  } catch {}
-  log.info(`Clear cache files`, { timestamp: true })
+  const { buildAsarOption, buildVersionOption, cert, entryOutDir } = await parseOptions(
+    pkg as PKG,
+    updater,
+  )
 
   sourcemap ??= isBuild || !!process.env.VSCODE_DEBUG
 
-  const _appPath = normalizePath(path.join(entryOutputDirPath, 'entry.js'))
-  if (path.resolve(normalizePath(pkg.main)) !== path.resolve(_appPath)) {
-    throw new Error(`Wrong "main" field in package.json: "${pkg.main}", it should be "${_appPath}"`)
-  }
+  try {
+    fs.rmSync(buildAsarOption.electronDistPath, { recursive: true, force: true })
+    fs.rmSync(entryOutDir, { recursive: true, force: true })
+  } catch {}
 
   const define = {
     __EIU_ASAR_BASE_NAME__: JSON.stringify(path.basename(buildAsarOption.asarOutputPath)),
     __EIU_ELECTRON_DIST_PATH__: JSON.stringify(normalizePath(buildAsarOption.electronDistPath)),
-    __EIU_ENTRY_DIST_PATH__: JSON.stringify(normalizePath(buildEntryOption.outDir)),
+    __EIU_ENTRY_DIST_PATH__: JSON.stringify(normalizePath(entryOutDir)),
     __EIU_IS_DEV__: JSON.stringify(!isBuild),
     __EIU_IS_ESM__: JSON.stringify(isESM),
     __EIU_MAIN_FILE__: JSON.stringify(getMainFileBaseName(_main.files)),
@@ -243,46 +256,11 @@ export async function electronWithUpdater(
     ),
   }
 
-  async function _buildEntry(): Promise<void> {
-    await buildEntry(buildEntryOption, isESM, define, bytecodeOptions)
-    log.info(`Build entry to '${entryOutputDirPath}'`, { timestamp: true })
-    await postBuild?.({
-      isBuild,
-      getPathFromEntryOutputDir(...paths) {
-        return path.join(entryOutputDirPath, ...paths)
-      },
-      copyToEntryOutputDir({ from, to = path.basename(from), skipIfExist = true }) {
-        if (!fs.existsSync(from)) {
-          log.warn(`${from} not found`, { timestamp: true })
-          return
-        }
-        const target = path.join(entryOutputDirPath, to)
-        copyAndSkipIfExist(from, target, skipIfExist)
-      },
-      copyModules({ modules, skipIfExist = true }) {
-        const nodeModulesPath = path.join(entryOutputDirPath, 'node_modules')
-        for (const m of modules) {
-          const { rootPath } = getPackageInfoSync(m) || {}
-          if (!rootPath) {
-            log.warn(`Package '${m}' not found`, { timestamp: true })
-            continue
-          }
-          copyAndSkipIfExist(rootPath, path.join(nodeModulesPath, m), skipIfExist)
-        }
-      },
-    })
-  }
-
-  let isInit = false
-
-  const electronPluginOptions: ElectronSimpleOptions = {
-    main: {
+  // Build main configuration (same as before)
+  const _electronOptions: ElectronOptions[] = [
+    {
       entry: _main.files,
-      onstart: async (args) => {
-        if (!isInit) {
-          isInit = true
-          await _buildEntry()
-        }
+      onstart: async (args: Parameters<StartupFn>[0]) => {
         if (_main.onstart) {
           await _main.onstart(args)
         } else {
@@ -301,9 +279,10 @@ export async function electronWithUpdater(
             outDir: `${buildAsarOption.electronDistPath}/main`,
             rolldownOptions: {
               external,
+              platform: 'node',
               output: {
+                cleanDir: true,
                 polyfillRequire: false,
-                format: isESM ? 'esm' : 'cjs',
               },
             },
           },
@@ -312,40 +291,35 @@ export async function electronWithUpdater(
         _main.vite ?? {},
       ),
     },
-    preload: {
-      input: _preload.files,
+  ]
+
+  // Build preload configuration
+  if (_preload?.files) {
+    _electronOptions.push({
+      onstart(args) {
+        // Notify the Renderer-Process to reload the page when the Preload-Scripts build is complete
+        args.reload()
+      },
       vite: mergeConfig(
         {
-          plugins: [
-            bytecodeOptions && bytecodePlugin('preload', bytecodeOptions),
-            {
-              name: `${id}-build`,
-              enforce: 'post',
-              apply() {
-                return isBuild
-              },
-              async closeBundle() {
-                await _buildEntry()
-                const buffer = await buildAsar(buildAsarOption)
-                if (!buildVersionJson && !isCI) {
-                  log.warn(
-                    'No `buildVersionJson` option setup, skip build version json. Only build in CI by default',
-                    { timestamp: true },
-                  )
-                } else {
-                  await buildUpdateJson(buildVersionOption, buffer)
-                }
-              },
-            },
-          ],
+          plugins: [bytecodeOptions && bytecodePlugin('preload', bytecodeOptions)],
           build: {
             sourcemap: sourcemap ? 'inline' : undefined,
             minify,
             outDir: `${buildAsarOption.electronDistPath}/preload`,
             rolldownOptions: {
               external,
+              input: _preload.files,
               output: {
+                // preload should use cjs format and not split
+                format: 'cjs',
+                inlineDynamicImports: true,
+                // Keep core.ts configuration
                 polyfillRequire: false,
+                // File naming from simple.ts (based on esmodule detection)
+                entryFileNames: `[name].${isESM ? 'mjs' : 'js'}`,
+                chunkFileNames: `[name].${isESM ? 'mjs' : 'js'}`,
+                assetFileNames: '[name].[ext]',
               },
             },
           },
@@ -353,44 +327,80 @@ export async function electronWithUpdater(
         } satisfies InlineConfig,
         _preload?.vite ?? {},
       ),
-    },
-  }
-
-  const result: PluginOption[] = [ElectronSimple(electronPluginOptions)]
-
-  if (files) {
-    const watchFiles = resolveInputToArray(files).map((file) => path.resolve(normalizePath(file)))
-
-    result.push({
-      name: `${id}-dev`,
-      apply() {
-        return !isBuild
-      },
-      configureServer(server) {
-        server.watcher.add(watchFiles).on('change', async (p) => {
-          if (!watchFiles.includes(p)) {
-            return
-          }
-          await _buildEntry()
-          if (_main.onstart) {
-            await _main.onstart({
-              startup,
-              reload: () => {
-                if (process.electronApp) {
-                  ;(server.hot || server.ws).send({ type: 'full-reload' })
-                  startup.send('electron-vite&type=hot-reload')
-                } else {
-                  startup()
-                }
-              },
-            })
-          } else {
-            await startup()
-          }
-        })
-      },
     })
   }
 
-  return result
+  _electronOptions.push({
+    entry: _entry.files,
+    vite: mergeConfig<InlineConfig, InlineConfig>(
+      {
+        plugins: [
+          bytecodeOptions && bytecodePlugin('main', bytecodeOptions),
+          {
+            name: `${id}:entry`,
+            enforce: 'post',
+            async closeBundle() {
+              log.info(`Build entry to '${entryOutDir}'`, { timestamp: true })
+              await _entry.postBuild?.({
+                isBuild,
+                getPathFromEntryOutputDir(...paths) {
+                  return path.join(entryOutDir, ...paths)
+                },
+                copyToEntryOutputDir({ from, to = path.basename(from), skipIfExist = true }) {
+                  if (!fs.existsSync(from)) {
+                    log.warn(`${from} not found`, { timestamp: true })
+                    return
+                  }
+                  const target = path.join(entryOutDir, to)
+                  copyAndSkipIfExist(from, target, skipIfExist)
+                },
+                copyModules({ modules, skipIfExist = true }) {
+                  const nodeModulesPath = path.join(entryOutDir, 'node_modules')
+                  for (const m of modules) {
+                    const { rootPath } = getPackageInfoSync(m) || {}
+                    if (!rootPath) {
+                      log.warn(`Package '${m}' not found`, { timestamp: true })
+                      continue
+                    }
+                    copyAndSkipIfExist(rootPath, path.join(nodeModulesPath, m), skipIfExist)
+                  }
+                },
+              })
+              if (isBuild) {
+                try {
+                  const buffer = await buildAsar(buildAsarOption)
+                  if (!buildVersionJson && !isCI) {
+                    log.warn(
+                      'No `buildVersionJson` option setup, skip build version json. Only build in CI by default',
+                      { timestamp: true },
+                    )
+                  } else {
+                    await buildUpdateJson(buildVersionOption, buffer)
+                  }
+                } catch (error) {
+                  console.error(error)
+                }
+              }
+            },
+          },
+        ],
+        build: {
+          sourcemap,
+          minify,
+          outDir: entryOutDir,
+          rolldownOptions: {
+            external,
+            platform: 'node',
+            output: {
+              polyfillRequire: false,
+            },
+          },
+        },
+        define,
+      },
+      _entry.vite || {},
+    ),
+  })
+
+  return electron(isESM, _electronOptions)
 }

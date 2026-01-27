@@ -2,7 +2,6 @@ import { createLogger } from 'vite'
 
 export const id = 'electron-incremental-updater'
 export const bytecodeId = `${id}-bytecode`
-export const esmId = `${id}-esm`
 
 export const log = createLogger('info', { prefix: `[${id}]` })
 

@@ -65,7 +65,8 @@
     "test": "bun test",
     "test:dev": "bun test --watch",
     "format": "oxfmt",
-    "lint": "oxlint --fix"
+    "lint": "oxlint --fix",
+    "qa": "oxlint --fix && oxfmt && tsc --noEmit"
   },
   "dependencies": {
     "@babel/plugin-transform-arrow-functions": "^7.27.1",
