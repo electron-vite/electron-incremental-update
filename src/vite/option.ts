@@ -3,12 +3,12 @@ import type { Promisable } from '@subframe7536/type-utils'
 import type { UpdateJSON } from '../utils/version'
 import type { BytecodeOptions } from './bytecode'
 import type { ElectronOptions } from './electron/core'
-import type { DistinguishedName } from './key'
+import type { DistinguishedName } from './utils/key'
 
 import { defaultSignature } from '../utils/crypto'
 import { defaultVersionJsonGenerator } from '../utils/version'
 import { defaultZipFile } from '../utils/zip'
-import { parseKeys } from './key'
+import { parseKeys } from './utils/key'
 
 export interface PKG {
   name: string

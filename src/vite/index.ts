@@ -1,10 +1,6 @@
 export { convertLiteral } from './bytecode/utils'
-export {
-  debugStartup,
-  electronWithUpdater,
-  filterErrorMessageStartup,
-  fixWinCharEncoding,
-} from './core'
+export { debugStartup, filterErrorMessageStartup, fixWinCharEncoding } from './startup'
+export { electronWithUpdater } from './core'
 export { electronWithUpdater as default } from './core'
 export { defineElectronConfig } from './define'
 export type { ElectronViteHelperOptions } from './define'

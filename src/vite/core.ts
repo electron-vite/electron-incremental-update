@@ -1,5 +1,3 @@
-import type { AnyFunction } from '@subframe7536/type-utils'
-import type { ChildProcessWithoutNullStreams, StdioOptions } from 'node:child_process'
 import type { InlineConfig, PluginOption } from 'vite'
 
 import { isCI } from 'ci-info'
@@ -10,113 +8,15 @@ import path from 'node:path'
 import { mergeConfig, normalizePath } from 'vite'
 
 import type { ElectronOptions } from './electron/core'
-import type { RolldownOptions } from './electron/utils'
 import type { ElectronWithUpdaterOptions, PKG } from './option'
 
-import { buildAsar, buildUpdateJson } from './build'
 import { bytecodePlugin } from './bytecode'
 import { id, log } from './constant'
 import electron from './electron/core'
 import { notBundle } from './electron/plugin'
 import { parseUpdaterOption } from './option'
-import { copyAndSkipIfExist } from './utils'
-
-export interface ElectronSimpleOptions {
-  main: ElectronOptions
-  preload?: Omit<ElectronOptions, 'entry'> & {
-    /**
-     * Shortcut of `build.rolldownOptions.input`.
-     *
-     * Preload scripts may contain Web assets, so use the `build.rolldownOptions.input` instead `build.lib.entry`.
-     */
-    input: RolldownOptions['input']
-  }
-}
-
-type StartupFn = NonNullable<NonNullable<ElectronSimpleOptions['main']>['onstart']>
-
-/**
- * Startup function for debug
- * @see {@link https://github.com/electron-vite/electron-vite-vue/blob/main/vite.config.ts electron-vite-vue template}
- * @example
- * import { debugStartup, buildElectronPluginOptions } from 'electron-incremental-update/vite'
- * const options = buildElectronPluginOptions({
- *   // ...
- *   main: {
- *     // ...
- *     startup: debugStartup
- *   },
- * })
- */
-export const debugStartup: StartupFn = async (args: Parameters<StartupFn>[0]) => {
-  if (process.env.VSCODE_DEBUG) {
-    // For `.vscode/.debug.script.mjs`
-    console.log('[startup] Electron App')
-  } else {
-    await args.startup()
-  }
-}
-
-/**
- * Startup function to filter unwanted error message
- * @see {@link https://github.com/electron/electron/issues/46903#issuecomment-2848483520 reference}
- * @example
- * import { filterErrorMessageStartup, buildElectronPluginOptions } from 'electron-incremental-update/vite'
- * const options = buildElectronPluginOptions({
- *   // ...
- *   main: {
- *     // ...
- *     startup: args => filterErrorMessageStartup(
- *       args,
- *       // ignore error message when function returns false
- *       msg => !/"code":-32601/.test(msg)
- *     )
- *   },
- * })
- */
-export async function filterErrorMessageStartup(
-  args: Parameters<StartupFn>[0],
-  filter: (msg: string) => boolean,
-): Promise<void> {
-  // https://github.com/electron-vite/./electron/pull/283
-  // reserve file descriptor 3 for Chromium; put Node IPC on file descriptor 4
-  const stdio: StdioOptions =
-    process.platform === 'linux'
-      ? ['inherit', 'pipe', 'pipe', 'ignore', 'ipc']
-      : ['inherit', 'pipe', 'pipe', 'ipc']
-  await args.startup(undefined, { stdio })
-  const elec = (process as unknown as { electronApp: ChildProcessWithoutNullStreams }).electronApp
-  elec.stdout.addListener('data', (data: Buffer) => {
-    console.log(data.toString().trimEnd())
-  })
-  elec.stderr.addListener('data', (data: Buffer) => {
-    const message = data.toString()
-    if (filter(message)) {
-      console.error(message)
-    }
-  })
-}
-
-/**
- * Startup function util to fix Windows terminal charset
- * @example
- * import { debugStartup, fixWinCharEncoding, buildElectronPluginOptions } from 'electron-incremental-update/vite'
- * const options = buildElectronPluginOptions({
- *   // ...
- *   main: {
- *     // ...
- *     startup: fixWinCharEncoding(debugStartup)
- *   },
- * })
- */
-export function fixWinCharEncoding<T extends AnyFunction>(fn: T): T {
-  return (async (...args) => {
-    if (process.platform === 'win32') {
-      ;(await import('node:child_process')).spawnSync('chcp', ['65001'])
-    }
-    await fn(...args)
-  }) as T
-}
+import { buildAsar, buildUpdateJson } from './utils/build'
+import { copyAndSkipIfExist } from './utils/file'
 
 function getMainFileBaseName(options: ElectronWithUpdaterOptions['main']['files']): string {
   let mainFilePath

@@ -9,7 +9,7 @@ import {
   defaultVerifySignature,
   hashBuffer,
 } from '../src/utils/crypto'
-import { generateKeyPair } from '../src/vite/key'
+import { generateKeyPair } from '../src/vite/utils/key'
 
 let plain = ''
 

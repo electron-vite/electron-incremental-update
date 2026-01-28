@@ -2,13 +2,18 @@ import { createPackage } from '@electron/asar'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import type { UpdateJSON } from '../utils/version'
-import type { _BuildAsarOption, _BuildVersionOption } from './option'
+import type { UpdateJSON } from '../../utils/version'
+import type { _BuildAsarOption, _BuildVersionOption } from '../option'
 
-import { isUpdateJSON } from '../utils/version'
-import { log } from './constant'
-import { readableSize } from './utils'
+import { isUpdateJSON } from '../../utils/version'
+import { log } from '../constant'
+import { readableSize } from './file'
 
+/**
+ * Build asar file and update package
+ * @param options - Asar build options
+ * @returns Buffer of the built asar file
+ */
 export async function buildAsar({
   version,
   asarOutputPath,
@@ -26,6 +31,11 @@ export async function buildAsar({
   return buf
 }
 
+/**
+ * Build update.json file with signature and version information
+ * @param options - Version build options
+ * @param asarBuffer - Buffer of the asar file to sign
+ */
 export async function buildUpdateJson(
   {
     versionPath,

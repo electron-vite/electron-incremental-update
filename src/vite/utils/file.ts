@@ -1,9 +1,14 @@
 import fs from 'node:fs'
 
-import type { ElectronOptions } from './electron/core'
+import type { ElectronOptions } from '../electron/core'
 
-import { log } from './constant'
+import { log } from '../constant'
 
+/**
+ * Convert byte size to human-readable format
+ * @param size - Size in bytes
+ * @returns Human-readable size string (e.g., "1.23 MB")
+ */
 export function readableSize(size: number): string {
   const units = ['B', 'KB', 'MB', 'GB']
   let i = 0
@@ -16,6 +21,12 @@ export function readableSize(size: number): string {
   return `${size.toFixed(2)} ${units[i]}`
 }
 
+/**
+ * Copy file/directory, skipping if target exists
+ * @param from - Source path
+ * @param to - Destination path
+ * @param skipIfExist - Skip copy if destination exists
+ */
 export function copyAndSkipIfExist(from: string, to: string, skipIfExist: boolean): void {
   if (!skipIfExist || !fs.existsSync(to)) {
     try {
@@ -26,6 +37,11 @@ export function copyAndSkipIfExist(from: string, to: string, skipIfExist: boolea
   }
 }
 
+/**
+ * Convert entry files to array format
+ * @param files - Entry files in various formats
+ * @returns Array of file paths
+ */
 export function resolveInputToArray(files: NonNullable<ElectronOptions['entry']>) {
   if (typeof files === 'string') {
     return [files]
