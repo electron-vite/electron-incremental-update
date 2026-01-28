@@ -3,7 +3,7 @@ import type { Plugin, ConfigEnv, UserConfig, LibraryOptions, InlineConfig } from
 
 import { build as viteBuild, version } from 'vite'
 
-import { resolveViteConfig, resolveInput, mockIndexHtml, treeKillSync } from './utils'
+import { resolveViteConfig, treeKillSync } from './utils'
 
 export interface ElectronOptions {
   /**
@@ -42,12 +42,15 @@ export default function electron(
   const optionsArray = Array.isArray(options) ? options : [options]
   let userConfig: UserConfig
   let configEnv: ConfigEnv
-  let mockdInput: Awaited<ReturnType<typeof mockIndexHtml>> | undefined
 
   if (!version.startsWith('8.')) {
     throw new Error(
       `[vite-plugin-electron] Vite v${version} does not support \`rolldownOptions\`, please install \`vite@>=8\` or use an earlier version of \`vite-plugin-electron\`.`,
     )
+  }
+
+  async function parallelBuild(options: ElectronOptions[]) {
+    await Promise.all(options.map(build.bind(build, isESM)))
   }
 
   return [
@@ -63,7 +66,7 @@ export default function electron(
           const entryCount = optionsArray.length
           let closeBundleCount = 0
 
-          for (const options of optionsArray) {
+          const result = optionsArray.map((options) => {
             options.vite ??= {}
             options.vite.mode ??= server.config.mode
             options.vite.root ??= server.config.root
@@ -107,8 +110,9 @@ export default function electron(
                 }
               },
             })
-            build(isESM, options)
-          }
+            return options
+          })
+          parallelBuild(result)
         })
       },
     },
@@ -122,23 +126,17 @@ export default function electron(
         // Make sure that Electron can be loaded into the local file using `loadFile` after packaging.
         config.base ??= './'
       },
-      async configResolved(config) {
-        const input = resolveInput(config)
-        if (input == null) {
-          mockdInput = await mockIndexHtml(config)
-        }
-      },
       async closeBundle() {
-        mockdInput?.remove()
-
-        for (const options of optionsArray) {
-          options.vite ??= {}
-          options.vite.mode ??= configEnv.mode
-          options.vite.root ??= userConfig.root
-          options.vite.envDir ??= userConfig.envDir
-          options.vite.envPrefix ??= userConfig.envPrefix
-          await build(isESM, options)
-        }
+        await parallelBuild(
+          optionsArray.map((options) => {
+            options.vite ??= {}
+            options.vite.mode ??= configEnv.mode
+            options.vite.root ??= userConfig.root
+            options.vite.envDir ??= userConfig.envDir
+            options.vite.envPrefix ??= userConfig.envPrefix
+            return options
+          }),
+        )
       },
     },
   ]

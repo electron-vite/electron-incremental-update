@@ -261,13 +261,7 @@ export async function electronWithUpdater(
   const _electronOptions: ElectronOptions[] = [
     {
       entry: _main.files,
-      onstart: async (args: Parameters<StartupFn>[0]) => {
-        if (_main.onstart) {
-          await _main.onstart(args)
-        } else {
-          await args.startup()
-        }
-      },
+      onstart: _main.onstart || ((args) => args.startup()),
       vite: mergeConfig(
         {
           plugins: [
