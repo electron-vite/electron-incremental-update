@@ -21,9 +21,9 @@ export interface ElectronOptions {
     /**
      * Electron App startup function.
      * It will mount the Electron App child-process to `process.electronApp`.
-     * @param argv default value `['.', '--no-sandbox']`
-     * @param options options for `child_process.spawn`
-     * @param customElectronPkg custom electron package name (default: 'electron')
+     * - argv: electron startup arguments (default `['.', '--no-sandbox']`)
+     * - options: options for `child_process.spawn`
+     * - customElectronPkg: custom electron package name (default: `'electron'`)
      */
     startup: (argv?: string[], options?: SpawnOptions, customElectronPkg?: string) => Promise<void>
     /** Reload Electron-Renderer */
@@ -37,6 +37,7 @@ export function build(isESM: boolean, options: ElectronOptions): ReturnType<type
 
 export default function electron(
   isESM: boolean,
+  root: string,
   options: ElectronOptions | ElectronOptions[],
 ): Plugin[] {
   const optionsArray = Array.isArray(options) ? options : [options]
@@ -57,6 +58,13 @@ export default function electron(
     {
       name: 'vite-plugin-electron:dev',
       apply: 'serve',
+      configResolved(config) {
+        if (config.root !== root) {
+          throw new Error(
+            `Renderer's root (${config.root}) is not same as electron's root (${root}). Please setup \`root\` in electron plugin`,
+          )
+        }
+      },
       configureServer(server) {
         server.httpServer?.once('listening', () => {
           Object.assign(process.env, {
@@ -72,6 +80,7 @@ export default function electron(
             options.vite.root ??= server.config.root
             options.vite.envDir ??= server.config.envDir
             options.vite.envPrefix ??= server.config.envPrefix
+            const defaultArgs = [options.vite.root || '.', '--no-sandbox']
 
             options.vite.build ??= {}
             if (!Object.keys(options.vite.build).includes('watch')) {
@@ -87,10 +96,11 @@ export default function electron(
                 if (++closeBundleCount < entryCount) {
                   return
                 }
-
                 if (options.onstart) {
                   options.onstart.call(this, {
-                    startup,
+                    async startup(args = defaultArgs, ...opt) {
+                      await startup(args, ...opt)
+                    },
                     // Why not use Vite's built-in `/@vite/client` to implement Hot reload?
                     // Because Vite only inserts `/@vite/client` into the `*.html` entry file, the preload scripts are usually a `*.js` file.
                     // @see - https://github.com/vitejs/vite/blob/v5.2.11/packages/vite/src/node/server/middlewares/indexHtml.ts#L399
@@ -101,12 +111,12 @@ export default function electron(
                         // For Electron apps that don't need to use the renderer process.
                         startup.send('electron-vite&type=hot-reload')
                       } else {
-                        startup()
+                        startup(defaultArgs)
                       }
                     },
                   })
                 } else {
-                  startup()
+                  startup(defaultArgs)
                 }
               },
             })
@@ -143,7 +153,7 @@ export default function electron(
 }
 
 interface StartupFn {
-  (): Promise<void>
+  (argv?: string[], options?: SpawnOptions, customElectronPkg?: string): Promise<void>
   send: (message: string) => void
   hookedProcessExit: boolean
   exit: () => Promise<void>
@@ -158,8 +168,8 @@ interface StartupFn {
  */
 export const startup: StartupFn = async (
   argv = ['.', '--no-sandbox'],
-  options?: SpawnOptions,
-  customElectronPkg?: string,
+  options?,
+  customElectronPkg?,
 ) => {
   const { spawn } = await import('node:child_process')
   const electron = await import(customElectronPkg ?? 'electron')

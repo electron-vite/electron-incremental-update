@@ -60,7 +60,7 @@
   "scripts": {
     "dev": "tsdown --watch",
     "build": "tsdown",
-    "play": "cd ./playground && vite",
+    "play": "vite",
     "release": "bun run format && bun run lint && bun run test && bun run build && bumpp --all",
     "test": "bun test",
     "test:dev": "bun test --watch",

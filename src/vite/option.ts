@@ -51,6 +51,12 @@ export interface ElectronWithUpdaterOptions {
    */
   isBuild: boolean
   /**
+   * Project root directory. Can be an absolute path, or a path relative from
+   * the location of the config file itself.
+   * @default process.cwd()
+   */
+  root?: string
+  /**
    * Whether to generate sourcemap
    * @default !isBuild || !!process.env.VSCODE_DEBUG
    */
@@ -318,7 +324,7 @@ interface ParseOptionReturn {
   entryOutDir: string
 }
 
-export async function parseOptions(
+export async function parseUpdaterOption(
   pkg: PKG,
   options: UpdaterOptions = {},
 ): Promise<ParseOptionReturn> {

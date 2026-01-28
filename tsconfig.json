@@ -1,4 +1,4 @@
 {
   "extends": "@subframe7536/type-utils/tsconfig.json",
-  "include": ["src", "tests", "playground"]
+  "include": ["src", "tests", "playground", "vite.config.ts"]
 }

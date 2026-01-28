@@ -18,7 +18,7 @@ import { bytecodePlugin } from './bytecode'
 import { id, log } from './constant'
 import electron from './electron/core'
 import { notBundle } from './electron/plugin'
-import { parseOptions } from './option'
+import { parseUpdaterOption } from './option'
 import { copyAndSkipIfExist } from './utils'
 
 export interface ElectronSimpleOptions {
@@ -202,14 +202,10 @@ const defaultExternal = [
 export async function electronWithUpdater(
   options: ElectronWithUpdaterOptions,
 ): Promise<PluginOption[] | undefined> {
-  const pkg = await loadPackageJSON()
-  if (!pkg || !pkg.version || !pkg.name || !pkg.main) {
-    throw new Error('package.json not found or invalid, must contains version, name and main field')
-  }
-
   let {
     isBuild,
-    external = Object.keys(pkg.dependencies || {}),
+    root = process.cwd(),
+    external,
     entry: _entry,
     main: _main,
     preload: _preload,
@@ -221,9 +217,16 @@ export async function electronWithUpdater(
     useNotBundle = true,
   } = options
 
-  log.info(`Clear cache files`, { timestamp: true })
+  const pkg = await loadPackageJSON(root)
+  if (!pkg || !pkg.version || !pkg.name || !pkg.main) {
+    throw new Error('package.json not found or invalid, must contains version, name and main field')
+  }
+
   const isESM = pkg.type === 'module'
-  const finalExternal = [...defaultExternal, ...(isBuild || _entry.postBuild ? [] : external)]
+  const finalExternal = [
+    ...defaultExternal,
+    ...(isBuild || _entry.postBuild ? [] : external || Object.keys(pkg.dependencies || {})),
+  ]
 
   let bytecodeOptions =
     typeof bytecode === 'object' ? bytecode : bytecode === true ? { enable: true } : undefined
@@ -234,15 +237,16 @@ export async function electronWithUpdater(
     )
   }
 
-  const { buildAsarOption, buildVersionOption, cert, entryOutDir } = await parseOptions(
+  const { buildAsarOption, buildVersionOption, cert, entryOutDir } = await parseUpdaterOption(
     pkg as PKG,
     updater,
   )
 
-  try {
-    fs.rmSync(buildAsarOption.electronDistPath, { recursive: true, force: true })
-    fs.rmSync(entryOutDir, { recursive: true, force: true })
-  } catch {}
+  log.info(`Clear cache files`, { timestamp: true })
+  await Promise.all([
+    fs.promises.rm(buildAsarOption.electronDistPath, { recursive: true, force: true }),
+    fs.promises.rm(entryOutDir, { recursive: true, force: true }),
+  ]).catch(() => {})
 
   const define = {
     __EIU_ASAR_BASE_NAME__: JSON.stringify(path.basename(buildAsarOption.asarOutputPath)),
@@ -261,7 +265,7 @@ export async function electronWithUpdater(
   const _electronOptions: ElectronOptions[] = [
     {
       entry: _main.files,
-      onstart: _main.onstart || ((args) => args.startup()),
+      onstart: _main.onstart,
       vite: mergeConfig(
         {
           plugins: [
@@ -397,5 +401,5 @@ export async function electronWithUpdater(
     ),
   })
 
-  return electron(isESM, _electronOptions)
+  return electron(isESM, normalizePath(path.resolve(root)), _electronOptions)
 }
