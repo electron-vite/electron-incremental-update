@@ -1,5 +1,4 @@
 import type { Promisable } from '@subframe7536/type-utils'
-import type { InlineConfig } from 'vite'
 
 import type { UpdateJSON } from '../utils/version'
 import type { BytecodeOptions } from './bytecode'
@@ -53,7 +52,7 @@ export interface ElectronWithUpdaterOptions {
   isBuild: boolean
   /**
    * Whether to generate sourcemap
-   * @default !isBuild
+   * @default !isBuild || !!process.env.VSCODE_DEBUG
    */
   sourcemap?: boolean
   /**
@@ -80,13 +79,12 @@ export interface ElectronWithUpdaterOptions {
    */
   buildVersionJson?: boolean
   /**
-   * `external` option in `build.rolldownOptions`,
-   * default is node built-in modules or native modules.
+   * Addtional `external` option in `build.rolldownOptions`,
    *
-   * If is in dev and `entry.postBuild` is not setup, will also
-   * external `dependencies` in `package.json`
+   * If is in dev and `entry.postBuild` is not setup,
+   * external `dependencies` in `package.json` by default
    */
-  external?: NonNullable<NonNullable<InlineConfig['build']>['rolldownOptions']>['external']
+  external?: (string | RegExp)[]
   /**
    * Options for entry (app.asar)
    *

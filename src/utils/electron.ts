@@ -266,7 +266,7 @@ export function handleUnexpectedErrors(callback: (err: unknown) => void): void {
 }
 
 /**
- * @deprecated No longer needed. It is embeded in `startupWithUpdater()
+ * @deprecated No longer needed. It is embeded in `startupWithUpdater()`
  */
 export function reloadOnPreloadScriptChanged(): void {
   console.warn(

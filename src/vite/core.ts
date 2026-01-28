@@ -145,6 +145,14 @@ function parseVersionPath(versionPath: string): string {
   return new URL(versionPath, 'file://').pathname.slice(1)
 }
 
+const defaultExternal = [
+  ...builtinModules,
+  'electron',
+  /^node:/,
+  /.*\.(node|dll|dylib|so)$/,
+  'original-fs',
+]
+
 /**
  * Base on `./electron/simple`
  * - integrate with updater
@@ -194,12 +202,18 @@ function parseVersionPath(versionPath: string): string {
 export async function electronWithUpdater(
   options: ElectronWithUpdaterOptions,
 ): Promise<PluginOption[] | undefined> {
+  const pkg = await loadPackageJSON()
+  if (!pkg || !pkg.version || !pkg.name || !pkg.main) {
+    throw new Error('package.json not found or invalid, must contains version, name and main field')
+  }
+
   let {
     isBuild,
+    external = Object.keys(pkg.dependencies || {}),
     entry: _entry,
     main: _main,
     preload: _preload,
-    sourcemap = !isBuild,
+    sourcemap = !isBuild || !!process.env.VSCODE_DEBUG,
     minify = isBuild,
     buildVersionJson,
     updater,
@@ -207,20 +221,9 @@ export async function electronWithUpdater(
     useNotBundle = true,
   } = options
 
-  const pkg = await loadPackageJSON()
-  if (!pkg || !pkg.version || !pkg.name || !pkg.main) {
-    throw new Error('package.json not found or invalid, must contains version, name and main field')
-  }
   log.info(`Clear cache files`, { timestamp: true })
   const isESM = pkg.type === 'module'
-  const external = [
-    ...builtinModules,
-    'electron',
-    /^node:/,
-    /.*\.(node|dll|dylib|so)$/,
-    'original-fs',
-    ...(isBuild || _entry.postBuild ? [] : Object.keys(pkg.dependencies || {})),
-  ]
+  const finalExternal = [...defaultExternal, ...(isBuild || _entry.postBuild ? [] : external)]
 
   let bytecodeOptions =
     typeof bytecode === 'object' ? bytecode : bytecode === true ? { enable: true } : undefined
@@ -235,8 +238,6 @@ export async function electronWithUpdater(
     pkg as PKG,
     updater,
   )
-
-  sourcemap ??= isBuild || !!process.env.VSCODE_DEBUG
 
   try {
     fs.rmSync(buildAsarOption.electronDistPath, { recursive: true, force: true })
@@ -278,10 +279,9 @@ export async function electronWithUpdater(
             minify,
             outDir: `${buildAsarOption.electronDistPath}/main`,
             rolldownOptions: {
-              external,
+              external: finalExternal,
               platform: 'node',
               output: {
-                cleanDir: true,
                 polyfillRequire: false,
               },
             },
@@ -308,7 +308,7 @@ export async function electronWithUpdater(
             minify,
             outDir: `${buildAsarOption.electronDistPath}/preload`,
             rolldownOptions: {
-              external,
+              external: finalExternal,
               input: _preload.files,
               output: {
                 // preload should use cjs format and not split
@@ -336,6 +336,7 @@ export async function electronWithUpdater(
       {
         plugins: [
           bytecodeOptions && bytecodePlugin('main', bytecodeOptions),
+          !isBuild && useNotBundle && notBundle(),
           {
             name: `${id}:entry`,
             enforce: 'post',
@@ -389,7 +390,7 @@ export async function electronWithUpdater(
           minify,
           outDir: entryOutDir,
           rolldownOptions: {
-            external,
+            external: finalExternal,
             platform: 'node',
             output: {
               polyfillRequire: false,
