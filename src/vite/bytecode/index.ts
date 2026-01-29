@@ -12,8 +12,7 @@ import { bytecodeModuleLoaderCode } from './code'
 import {
   bytecodeModuleLoader,
   compileToBytecode,
-  convertArrowFunctionAndTemplate,
-  convertLiteral,
+  prepare,
   toRelativePath,
   useStrict,
 } from './utils'
@@ -41,6 +40,46 @@ export interface BytecodeOptions {
 
 function getBytecodeLoaderBlock(chunkFileName: string): string {
   return `require("${toRelativePath(bytecodeModuleLoader, normalizePath(chunkFileName))}");`
+}
+
+function checkHasBytecodeChunk(
+  getModuleInfo: (id: string) => { importers: string[]; dynamicImporters: string[] } | null,
+  imports: string[],
+  dynamicImports: string[],
+  bytecodeChunks: Set<string>,
+): boolean {
+  const queue = [...imports, ...dynamicImports]
+  const visited = new Set<string>()
+
+  while (queue.length > 0) {
+    const moduleId = queue.shift()!
+    if (visited.has(moduleId)) {
+      continue
+    }
+    visited.add(moduleId)
+
+    if (bytecodeChunks.has(moduleId)) {
+      return true
+    }
+
+    const moduleInfo = getModuleInfo(moduleId)
+    // if (moduleInfo && !moduleInfo.isExternal) {
+    if (moduleInfo) {
+      const { importers, dynamicImporters } = moduleInfo
+      for (const importerId of importers) {
+        if (!visited.has(importerId)) {
+          queue.push(importerId)
+        }
+      }
+      for (const importerId of dynamicImporters) {
+        if (!visited.has(importerId)) {
+          queue.push(importerId)
+        }
+      }
+    }
+  }
+
+  return false
 }
 
 /**
@@ -90,8 +129,14 @@ export function bytecodePlugin(
     configResolved(resolvedConfig) {
       config = resolvedConfig
     },
-    generateBundle(options): void {
-      if (options.format !== 'es' && bytecodeRequired) {
+    renderChunk(_, chunk) {
+      if (chunk.type === 'chunk') {
+        bytecodeRequired = true
+      }
+      return null
+    },
+    generateBundle(): void {
+      if (bytecodeRequired) {
         this.emitFile({
           type: 'asset',
           source: `${bytecodeModuleLoaderCode}\n`,
@@ -100,19 +145,12 @@ export function bytecodePlugin(
         })
       }
     },
-    renderChunk(_, chunk) {
-      if (chunk.type === 'chunk') {
-        bytecodeRequired = true
-      }
-      return null
-    },
     async writeBundle(options, output) {
       if (!bytecodeRequired) {
         return
       }
 
       const outDir = options.dir!
-
       bytecodeFiles = []
 
       const bundles = Object.keys(output)
@@ -131,7 +169,7 @@ export function bytecodePlugin(
         bundles.map(async (name) => {
           const chunk = output[name]
           if (chunk.type === 'chunk') {
-            let _code = convertArrowFunctionAndTemplate(convertLiteral(chunk.code).code).code
+            let _code = prepare(chunk.code)
             const chunkFilePath = path.resolve(outDir, name)
 
             if (beforeCompile) {
@@ -169,37 +207,19 @@ export function bytecodePlugin(
               }
 
               bytecodeFiles.push({ name: `${name}c`, size: bytecodeBuffer.length })
-            } else {
-              if (chunk.isEntry) {
-                let hasBytecodeMoudle = false
-                const idsToHandle = new Set([...chunk.imports, ...chunk.dynamicImports])
-
-                for (const moduleId of idsToHandle) {
-                  if (bytecodeChunks.has(moduleId)) {
-                    hasBytecodeMoudle = true
-                    break
-                  }
-                  const moduleInfo = this.getModuleInfo(moduleId)
-                  // if (moduleInfo && !moduleInfo.isExternal) {
-                  if (moduleInfo) {
-                    const { importers, dynamicImporters } = moduleInfo
-                    for (const importerId of importers) {
-                      idsToHandle.add(importerId)
-                    }
-                    for (const importerId of dynamicImporters) {
-                      idsToHandle.add(importerId)
-                    }
-                  }
-                }
-
+            } else if (chunk.isEntry) {
+              const hasBytecodeMoudle = checkHasBytecodeChunk(
+                this.getModuleInfo,
+                chunk.imports,
+                chunk.dynamicImports,
+                bytecodeChunks,
+              )
+              if (hasBytecodeMoudle) {
                 const bytecodeLoaderBlock = getBytecodeLoaderBlock(chunk.fileName)
-                _code = hasBytecodeMoudle
-                  ? _code.replace(
-                      new RegExp(`(${useStrict})|("use strict";)`),
-                      `${useStrict}\n${bytecodeLoaderBlock}`,
-                    )
-                  : _code
+                _code = _code.replace(/use strict(["'];)/, `$1\n${bytecodeLoaderBlock}`)
               }
+              fs.writeFileSync(chunkFilePath, _code)
+            } else {
               fs.writeFileSync(chunkFilePath, _code)
             }
           }

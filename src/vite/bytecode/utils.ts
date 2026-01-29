@@ -1,6 +1,5 @@
 import * as babel from '@babel/core'
 import { getPackageInfoSync } from 'local-pkg'
-import MagicString from 'magic-string'
 import cp from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -88,29 +87,60 @@ export function compileToBytecode(
   })
 }
 
-export function convertArrowFunctionAndTemplate(code: string): { code: string; map: any } {
+export function prepare(code: string, offset?: number): string {
+  let hasTransformed = false
+
   const result = babel.transform(code, {
     plugins: [
       '@babel/plugin-transform-arrow-functions',
       '@babel/plugin-transform-template-literals',
+      () => ({
+        visitor: {
+          StringLiteral(path: any) {
+            const parent = path.parent
+            const node = path.node
+
+            if (parent.type === 'CallExpression') {
+              if (parent.callee.type === 'Identifier' && parent.callee.name === 'require') {
+                return
+              }
+              if (parent.callee.type === 'Import') {
+                return
+              }
+            }
+
+            if (parent.type.startsWith('Export')) {
+              return
+            }
+
+            if (parent.type.startsWith('Import')) {
+              return
+            }
+
+            if (parent.type === 'ObjectMethod' && parent.key === node) {
+              return
+            }
+
+            if (parent.type === 'ObjectProperty' && parent.key === node) {
+              const obfuscated = obfuscateString(node.value, offset)
+              path.replaceWith(babel.types.identifier(obfuscated))
+              hasTransformed = true
+              return
+            }
+            if (!node.value.trim()) {
+              return
+            }
+            path.replaceWith(babel.types.identifier(obfuscateString(node.value, offset)))
+            hasTransformed = true
+          },
+        },
+      }),
     ],
   })
 
-  return {
-    code: result?.code || code,
-    map: result?.map,
-  }
-}
+  const transformedCode = result?.code || code
 
-export function prepare(code: string): string {
-  const result = babel.transform(code, {
-    plugins: [
-      '@babel/plugin-transform-arrow-functions',
-      '@babel/plugin-transform-template-literals',
-    ],
-  })
-
-  return convertLiteral(result?.code || code).code
+  return hasTransformed ? `${transformedCode}\n${decodeFn}` : transformedCode
 }
 
 export const decodeFn =
@@ -121,80 +151,4 @@ export function obfuscateString(
 ): string {
   const hexArray = input.split('').map((c) => `0x${(c.charCodeAt(0) + offset).toString(16)}`)
   return `_0xstr_([${hexArray.join(',')}],${offset})`
-}
-
-/**
- * Obfuscate string
- * @param code source code
- * @param sourcemap whether to generate sourcemap
- * @param offset custom offset
- */
-export function convertLiteral(
-  code: string,
-  sourcemap?: boolean,
-  offset?: number,
-): { code: string; map?: any } {
-  const s = new MagicString(code)
-  let hasTransformed = false
-  const ast = babel.parse(code, { ast: true })
-  if (!ast) {
-    throw new Error('Cannot parse code')
-  }
-  babel.traverse(ast, {
-    StringLiteral(path) {
-      const parent = path.parent
-      const node = path.node
-
-      if (parent.type === 'CallExpression') {
-        if (parent.callee.type === 'Identifier' && parent.callee.name === 'require') {
-          return
-        }
-        if (parent.callee.type === 'Import') {
-          return
-        }
-      }
-
-      if (parent.type.startsWith('Export')) {
-        return
-      }
-
-      if (parent.type.startsWith('Import')) {
-        return
-      }
-
-      if (parent.type === 'ObjectMethod' && parent.key === node) {
-        return
-      }
-
-      if (parent.type === 'ObjectProperty' && parent.key === node) {
-        const result = `[${obfuscateString(node.value, offset)}]`
-        const start = node.start
-        const end = node.end
-        if (start && end) {
-          s.overwrite(start, end, result)
-          hasTransformed = true
-        }
-        return
-      }
-      if (!node.value.trim()) {
-        return
-      }
-      const result = obfuscateString(node.value, offset)
-      const start = node.start
-      const end = node.end
-      if (start && end) {
-        s.overwrite(start, end, result)
-        hasTransformed = true
-      }
-    },
-  })
-
-  if (hasTransformed) {
-    s.append('\n').append(decodeFn)
-  }
-
-  return {
-    code: s.toString(),
-    map: sourcemap ? s.generateMap({ hires: true }) : undefined,
-  }
 }

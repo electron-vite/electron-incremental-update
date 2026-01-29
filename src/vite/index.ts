@@ -1,4 +1,3 @@
-export { convertLiteral } from './bytecode/utils'
 export { debugStartup, filterErrorMessageStartup, fixWinCharEncoding } from './startup'
 export { electronWithUpdater } from './core'
 export { electronWithUpdater as default } from './core'

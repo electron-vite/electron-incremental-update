@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test'
+import { writeFileSync } from 'node:fs'
 import { build } from 'vite'
 
 import { bytecodePlugin } from '../src/vite/bytecode'
@@ -6,7 +7,12 @@ import { defaultExternal } from '../src/vite/core'
 
 describe(() => {
   it('basic plugin usage', async () => {
-    const plugin = bytecodePlugin('main', false, { enable: true })
+    const plugin = bytecodePlugin('main', false, {
+      enable: true,
+      beforeCompile(code, id) {
+        writeFileSync(id.replace(/\.cjs$/, '.origin.cjs'), code, 'utf-8')
+      },
+    })
 
     const outDir = 'tests/dist'
     const result = await build({
@@ -14,6 +20,10 @@ describe(() => {
       publicDir: false,
       plugins: [plugin],
       mode: 'build',
+      define: {
+        __EIU_IS_DEV__: JSON.stringify(false),
+        __EIU_IS_ESM__: JSON.stringify(false),
+      },
       build: {
         lib: {
           entry: { test: 'playground/main.ts' },
@@ -23,7 +33,7 @@ describe(() => {
         rolldownOptions: {
           external: defaultExternal,
           output: {
-            minify: { compress: true, codegen: { removeWhitespace: false } },
+            minify: true,
           },
         },
       },

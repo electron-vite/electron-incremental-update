@@ -3,6 +3,7 @@
 ## Build/Lint/Test Commands
 
 ### Primary Commands
+
 ```bash
 # Build the project
 bun run build
@@ -32,6 +33,7 @@ bun run release
 ## Code Style Guidelines
 
 ### Imports
+
 - Use bare imports for package exports (e.g., `import { createElectronApp } from 'electron-incremental-update'`)
 - Use relative imports for internal modules (e.g., `import { hashBuffer } from '../utils/crypto'`)
 - Group imports: external packages first, then internal modules
@@ -39,6 +41,7 @@ bun run release
 - Prefer named exports and imports over default exports
 
 ### Formatting
+
 - No semicolons (semi: false)
 - Single quotes for strings
 - Sort imports automatically using formatter
@@ -46,6 +49,7 @@ bun run release
 - Follow Prettier-compatible formatting rules
 
 ### TypeScript Guidelines
+
 - Use strict TypeScript typing throughout
 - Prefer type-safe imports: `typescript/consistent-type-imports`
 - Use `typescript/consistent-type-definitions` (prefer interfaces over types when possible)
@@ -55,6 +59,7 @@ bun run release
 - Use discriminated unions when applicable
 
 ### Naming Conventions
+
 - Use camelCase for variables and functions
 - Use PascalCase for classes and types
 - Use UPPER_SNAKE_CASE for constants
@@ -62,6 +67,7 @@ bun run release
 - Event handler properties prefixed with `on` (e.g., `onDownloading`, `onUpdateAvailable`)
 
 ### Error Handling
+
 - Use try/catch blocks for async operations
 - Implement proper error events (updater.on('error', ...))
 - Log errors with appropriate context
@@ -70,6 +76,7 @@ bun run release
 - Avoid silent failures
 
 ### Testing Guidelines
+
 - Use Bun test runner for all tests
 - Follow BDD-style testing with describe/it blocks
 - Name test files with `.test.ts` suffix
@@ -79,6 +86,7 @@ bun run release
 - Clean up resources in afterAll/beforeAll hooks
 
 ### Performance Considerations
+
 - Minimize dependencies in the final bundle
 - Use lazy loading where appropriate
 - Efficient memory management for large files
@@ -86,6 +94,7 @@ bun run release
 - Optimize file I/O operations
 
 ### Documentation
+
 - Use JSDoc for exported functions/classes
 - Document all public API methods
 - Include examples where complex usage exists

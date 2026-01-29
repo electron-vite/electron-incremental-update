@@ -239,7 +239,7 @@ module.exports = {
   extraResources: [
     { from: `release/${targetFile}`, to: targetFile }, // <- asar file
   ],
-  publish: null,// <- disable publish
+  publish: null, // <- disable publish
 }
 ```
 
@@ -256,7 +256,11 @@ in `electron/main/index.ts`
 ```ts
 import { app, dialog } from 'electron'
 import { startupWithUpdater } from 'electron-incremental-update'
-import { getPathFromAppNameAsar, getAppVersion, getEntryVersion } from 'electron-incremental-update/utils'
+import {
+  getPathFromAppNameAsar,
+  getAppVersion,
+  getEntryVersion,
+} from 'electron-incremental-update/utils'
 
 export default startupWithUpdater(async (updater) => {
   await app.whenReady()
@@ -379,11 +383,7 @@ in `vite.config.ts`
 const plugin = electronWithUpdater({
   // options...
   entry: {
-    files: [
-      './electron/native/entry.ts',
-      './electron/native/db.ts',
-      './electron/native/img.ts',
-    ],
+    files: ['./electron/native/entry.ts', './electron/native/db.ts', './electron/native/img.ts'],
     postBuild: ({ copyToEntryOutputDir, copyModules }) => {
       // for better-sqlite3
       copyToEntryOutputDir({
