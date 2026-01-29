@@ -45,7 +45,7 @@ function parseVersionPath(versionPath: string): string {
   return new URL(versionPath, 'file://').pathname.slice(1)
 }
 
-const defaultExternal = [
+export const defaultExternal = [
   ...builtinModules,
   'electron',
   /^node:/,
@@ -170,7 +170,7 @@ export async function electronWithUpdater(
         {
           plugins: [
             !isBuild && useNotBundle && notBundle(),
-            bytecodeOptions && bytecodePlugin('main', bytecodeOptions),
+            bytecodeOptions && bytecodePlugin('main', isESM, bytecodeOptions),
           ],
           build: {
             sourcemap,
@@ -200,7 +200,7 @@ export async function electronWithUpdater(
       },
       vite: mergeConfig(
         {
-          plugins: [bytecodeOptions && bytecodePlugin('preload', bytecodeOptions)],
+          plugins: [bytecodeOptions && bytecodePlugin('preload', isESM, bytecodeOptions)],
           build: {
             sourcemap: sourcemap ? 'inline' : undefined,
             minify,
@@ -233,7 +233,7 @@ export async function electronWithUpdater(
     vite: mergeConfig<InlineConfig, InlineConfig>(
       {
         plugins: [
-          bytecodeOptions && bytecodePlugin('main', bytecodeOptions),
+          bytecodeOptions && bytecodePlugin('main', isESM, bytecodeOptions),
           !isBuild && useNotBundle && notBundle(),
           {
             name: `${id}:entry`,

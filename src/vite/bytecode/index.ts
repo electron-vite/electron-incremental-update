@@ -4,7 +4,7 @@ import type { Plugin, ResolvedConfig } from 'vite'
 import MagicString from 'magic-string'
 import fs from 'node:fs'
 import path from 'node:path'
-import { createFilter, normalizePath } from 'vite'
+import { normalizePath } from 'vite'
 
 import { bytecodeId, bytecodeLog } from '../constant'
 import { readableSize } from '../utils/file'
@@ -54,7 +54,11 @@ function getBytecodeLoaderBlock(chunkFileName: string): string {
  * @param options - Bytecode compilation options
  * @returns Vite plugin or null if bytecode compilation is disabled
  */
-export function bytecodePlugin(env: 'preload' | 'main', options: BytecodeOptions): Plugin | null {
+export function bytecodePlugin(
+  env: 'preload' | 'main',
+  isESM: boolean,
+  options: BytecodeOptions,
+): Plugin | null {
   const { enable, preload = false, electronPath, beforeCompile } = options
 
   if (!enable) {
@@ -69,7 +73,11 @@ export function bytecodePlugin(env: 'preload' | 'main', options: BytecodeOptions
     return null
   }
 
-  const filter = createFilter(/\.(m?[jt]s|[jt]sx)$/)
+  if (isESM) {
+    throw new Error(
+      '`bytecodePlugin` does not support ES module, please set `"types": "commonjs"` in package.json',
+    )
+  }
 
   let config: ResolvedConfig
   let bytecodeRequired = false
@@ -82,11 +90,6 @@ export function bytecodePlugin(env: 'preload' | 'main', options: BytecodeOptions
     configResolved(resolvedConfig) {
       config = resolvedConfig
     },
-    transform(code, id) {
-      if (!filter(id)) {
-        return convertLiteral(code, !!config.build.sourcemap)
-      }
-    },
     generateBundle(options): void {
       if (options.format !== 'es' && bytecodeRequired) {
         this.emitFile({
@@ -97,22 +100,14 @@ export function bytecodePlugin(env: 'preload' | 'main', options: BytecodeOptions
         })
       }
     },
-    renderChunk(code, chunk, options) {
-      if (options.format === 'es') {
-        bytecodeLog.warn(
-          '`bytecodePlugin` does not support ES module, please set "build.rollupOptions.output.format" option to "cjs"',
-          { timestamp: true },
-        )
-        return null
-      }
+    renderChunk(_, chunk) {
       if (chunk.type === 'chunk') {
         bytecodeRequired = true
-        return convertArrowFunctionAndTemplate(code)
       }
       return null
     },
     async writeBundle(options, output) {
-      if (options.format === 'es' || !bytecodeRequired) {
+      if (!bytecodeRequired) {
         return
       }
 
@@ -136,7 +131,7 @@ export function bytecodePlugin(env: 'preload' | 'main', options: BytecodeOptions
         bundles.map(async (name) => {
           const chunk = output[name]
           if (chunk.type === 'chunk') {
-            let _code = chunk.code
+            let _code = convertArrowFunctionAndTemplate(convertLiteral(chunk.code).code).code
             const chunkFilePath = path.resolve(outDir, name)
 
             if (beforeCompile) {

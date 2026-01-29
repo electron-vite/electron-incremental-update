@@ -95,10 +95,22 @@ export function convertArrowFunctionAndTemplate(code: string): { code: string; m
       '@babel/plugin-transform-template-literals',
     ],
   })
+
   return {
     code: result?.code || code,
     map: result?.map,
   }
+}
+
+export function prepare(code: string): string {
+  const result = babel.transform(code, {
+    plugins: [
+      '@babel/plugin-transform-arrow-functions',
+      '@babel/plugin-transform-template-literals',
+    ],
+  })
+
+  return convertLiteral(result?.code || code).code
 }
 
 export const decodeFn =

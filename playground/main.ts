@@ -10,6 +10,7 @@ export default startupWithUpdater(() => {
     .then((util) => console.log(util.data))
     .then(() => requireNative('native'))
     .then(() => {
+      console.log('This is a secret string')
       const win = new BrowserWindow({
         title: 'Main window1',
         webPreferences: { preload: getPathFromPreload('preload.js') },

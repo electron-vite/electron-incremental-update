@@ -366,8 +366,8 @@ If you are using `electron-builder` to build distributions, all the native modul
 
 Luckily, `vite` can bundle all the dependencies. Just follow the steps:
 
-1. setup `nativeModuleEntryMap` option
-2. Manually copy the native binaries in `postBuild` callback
+1. setup `entry.files` option
+2. Manually copy the native binaries in `entry.postBuild` callback
 3. Exclude all the dependencies in `electron-builder`'s config
 4. call the native functions with `requireNative` / `importNative` in your code
 
@@ -378,28 +378,27 @@ in `vite.config.ts`
 ```ts
 const plugin = electronWithUpdater({
   // options...
-  updater: {
-    entry: {
-      nativeModuleEntryMap: {
-        db: './electron/native/db.ts',
-        img: './electron/native/img.ts',
-      },
-      postBuild: ({ copyToEntryOutputDir, copyModules }) => {
-        // for better-sqlite3
-        copyToEntryOutputDir({
-          from: './node_modules/better-sqlite3/build/Release/better_sqlite3.node',
-          skipIfExist: false,
-        })
-        // for @napi-rs/image
-        const startStr = '@napi-rs+image-'
-        const fileName = readdirSync('./node_modules/.pnpm').find((p) => p.startsWith(startStr))!
-        const archName = fileName.substring(startStr.length).split('@')[0]
-        copyToEntryOutputDir({
-          from: `./node_modules/.pnpm/${fileName}/node_modules/@napi-rs/image-${archName}/image.${archName}.node`,
-        })
-        // or just copy specific dependency
-        copyModules({ modules: ['better-sqlite3'] })
-      },
+  entry: {
+    files: [
+      './electron/native/entry.ts',
+      './electron/native/db.ts',
+      './electron/native/img.ts',
+    ],
+    postBuild: ({ copyToEntryOutputDir, copyModules }) => {
+      // for better-sqlite3
+      copyToEntryOutputDir({
+        from: './node_modules/better-sqlite3/build/Release/better_sqlite3.node',
+        skipIfExist: false,
+      })
+      // for @napi-rs/image
+      const startStr = '@napi-rs+image-'
+      const fileName = readdirSync('./node_modules/.pnpm').find((p) => p.startsWith(startStr))!
+      const archName = fileName.substring(startStr.length).split('@')[0]
+      copyToEntryOutputDir({
+        from: `./node_modules/.pnpm/${fileName}/node_modules/@napi-rs/image-${archName}/image.${archName}.node`,
+      })
+      // or just copy specific dependency
+      copyModules({ modules: ['better-sqlite3'] })
     },
   },
 })
