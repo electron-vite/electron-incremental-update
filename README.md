@@ -239,8 +239,7 @@ module.exports = {
   extraResources: [
     { from: `release/${targetFile}`, to: targetFile }, // <- asar file
   ],
-  // disable publish
-  publish: null,
+  publish: null,// <- disable publish
 }
 ```
 
@@ -257,7 +256,7 @@ in `electron/main/index.ts`
 ```ts
 import { app, dialog } from 'electron'
 import { startupWithUpdater } from 'electron-incremental-update'
-import { getPathFromAppNameAsar, getEntryVersion } from 'electron-incremental-update/utils'
+import { getPathFromAppNameAsar, getAppVersion, getEntryVersion } from 'electron-incremental-update/utils'
 
 export default startupWithUpdater(async (updater) => {
   await app.whenReady()
@@ -265,7 +264,7 @@ export default startupWithUpdater(async (updater) => {
   // Display current app information
   console.table({
     [`${app.name}.asar path:`]: getPathFromAppNameAsar(),
-    'app version:': app.getVersion(),
+    'app version:': getAppVersion(),
     'entry (installer) version:': getEntryVersion(),
     'electron version:': process.versions.electron,
   })
