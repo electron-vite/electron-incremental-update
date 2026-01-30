@@ -382,9 +382,13 @@ in `vite.config.ts`
 ```ts
 const plugin = electronWithUpdater({
   // options...
+  external: false, // <- bundle all native modules, handle bin files manually
   entry: {
     files: ['./electron/native/entry.ts', './electron/native/db.ts', './electron/native/img.ts'],
-    postBuild: ({ copyToEntryOutputDir, copyModules }) => {
+    postBuild: ({ isBuild, copyToEntryOutputDir }) => {
+      if (!isBuild) {
+        return
+      }
       // for better-sqlite3
       copyToEntryOutputDir({
         from: './node_modules/better-sqlite3/build/Release/better_sqlite3.node',
@@ -397,8 +401,6 @@ const plugin = electronWithUpdater({
       copyToEntryOutputDir({
         from: `./node_modules/.pnpm/${fileName}/node_modules/@napi-rs/image-${archName}/image.${archName}.node`,
       })
-      // or just copy specific dependency
-      copyModules({ modules: ['better-sqlite3'] })
     },
   },
 })

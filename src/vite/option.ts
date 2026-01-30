@@ -87,10 +87,10 @@ export interface ElectronWithUpdaterOptions {
   /**
    * Addtional `external` option in `build.rolldownOptions`,
    *
-   * If is in dev and `entry.postBuild` is not setup,
+   * If equals `true`,
    * external `dependencies` in `package.json` by default
    */
-  external?: (string | RegExp)[]
+  external?: (string | RegExp)[] | boolean
   /**
    * Options for entry (app.asar)
    *

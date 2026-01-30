@@ -1,7 +1,7 @@
 import type { InlineConfig, PluginOption } from 'vite'
 
 import { isCI } from 'ci-info'
-import { getPackageInfoSync, loadPackageJSON } from 'local-pkg'
+import { loadPackageJSON } from 'local-pkg'
 import fs from 'node:fs'
 import { builtinModules } from 'node:module'
 import path from 'node:path'
@@ -45,7 +45,7 @@ function parseVersionPath(versionPath: string): string {
   return new URL(versionPath, 'file://').pathname.slice(1)
 }
 
-export const defaultExternal: NonNullable<ElectronWithUpdaterOptions['external']> = [
+export const defaultExternal: Extract<ElectronWithUpdaterOptions['external'], object> = [
   ...builtinModules,
   'electron',
   /^node:/,
@@ -123,10 +123,12 @@ export async function electronWithUpdater(
   }
 
   const isESM = pkg.type === 'module'
-  const finalExternal = [
-    ...defaultExternal,
-    ...(isBuild || _entry.postBuild ? [] : external || Object.keys(pkg.dependencies || {})),
-  ]
+  const finalExternal = [...defaultExternal]
+  if (external === true) {
+    finalExternal.push(...Object.keys(pkg.dependencies || {}))
+  } else if (Array.isArray(external)) {
+    finalExternal.push(...external)
+  }
 
   let bytecodeOptions =
     typeof bytecode === 'object' ? bytecode : bytecode === true ? { enable: true } : undefined
@@ -255,16 +257,8 @@ export async function electronWithUpdater(
                   const target = path.join(entryOutDir, to)
                   copyAndSkipIfExist(from, target, skipIfExist)
                 },
-                copyModules({ modules, skipIfExist = true }) {
-                  const nodeModulesPath = path.join(entryOutDir, 'node_modules')
-                  for (const m of modules) {
-                    const { rootPath } = getPackageInfoSync(m) || {}
-                    if (!rootPath) {
-                      log.warn(`Package '${m}' not found`, { timestamp: true })
-                      continue
-                    }
-                    copyAndSkipIfExist(rootPath, path.join(nodeModulesPath, m), skipIfExist)
-                  }
+                copyModules() {
+                  console.warn('`copyModules()` is deprecated. Will do nothing')
                 },
               })
               if (isBuild) {
