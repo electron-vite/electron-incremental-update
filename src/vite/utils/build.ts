@@ -22,7 +22,8 @@ export async function buildAsar({
   rendererDistPath,
   generateGzipFile,
 }: _BuildAsarOption): Promise<Buffer> {
-  await fs.promises.rename(rendererDistPath, path.join(electronDistPath, 'renderer'))
+  const rPath = path.join(electronDistPath, 'renderer')
+  await fs.promises.cp(rendererDistPath, rPath, { recursive: true })
   fs.writeFileSync(path.join(electronDistPath, 'version'), version)
   await createPackage(electronDistPath, asarOutputPath)
   const buf = await generateGzipFile(fs.readFileSync(asarOutputPath))

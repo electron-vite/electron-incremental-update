@@ -174,12 +174,13 @@ export interface ElectronWithUpdaterOptions {
   updater?: UpdaterOptions
 }
 
-export interface _BuildAsarOption {
+export interface _BuildAsarOption extends Required<
+  Pick<
+    NonNullable<UpdaterOptions['paths']>,
+    'asarOutputPath' | 'electronDistPath' | 'gzipPath' | 'rendererDistPath'
+  >
+> {
   version: string
-  asarOutputPath: string
-  gzipPath: string
-  electronDistPath: string
-  rendererDistPath: string
   generateGzipFile: NonNullable<GeneratorOverrideFunctions['generateGzipFile']>
 }
 

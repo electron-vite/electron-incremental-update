@@ -62,7 +62,7 @@
     "build": "tsdown",
     "play": "vite",
     "release": "bun run format && bun run lint && bun run test && bun run build && bumpp --all",
-    "test": "bun test",
+    "test": "bun test --preload ./tests/setup.ts",
     "test:dev": "bun test --watch",
     "format": "oxfmt",
     "lint": "oxlint --fix",

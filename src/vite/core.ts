@@ -45,7 +45,7 @@ function parseVersionPath(versionPath: string): string {
   return new URL(versionPath, 'file://').pathname.slice(1)
 }
 
-export const defaultExternal = [
+export const defaultExternal: NonNullable<ElectronWithUpdaterOptions['external']> = [
   ...builtinModules,
   'electron',
   /^node:/,
@@ -144,6 +144,7 @@ export async function electronWithUpdater(
 
   log.info(`Clear cache files`, { timestamp: true })
   await Promise.all([
+    fs.promises.rm(buildAsarOption.rendererDistPath, { recursive: true, force: true }),
     fs.promises.rm(buildAsarOption.electronDistPath, { recursive: true, force: true }),
     fs.promises.rm(entryOutDir, { recursive: true, force: true }),
   ]).catch(() => {})
@@ -181,6 +182,7 @@ export async function electronWithUpdater(
               platform: 'node',
               output: {
                 polyfillRequire: false,
+                exports: 'named',
               },
             },
           },
@@ -211,7 +213,7 @@ export async function electronWithUpdater(
               output: {
                 // preload should use cjs format and not split
                 format: 'cjs',
-                inlineDynamicImports: true,
+                codeSplitting: false,
                 // Keep core.ts configuration
                 polyfillRequire: false,
                 // File naming from simple.ts (based on esmodule detection)

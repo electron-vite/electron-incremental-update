@@ -64,7 +64,7 @@ describe('combined transformations', () => {
         return _0xstr_([0x7b,0x73,0x76,0x70,0x68],4) + _0xstr_([0x25],4);
       };
       const obj = {
-        _0xstr_([0x6f,0x69,0x7d],4): _0xstr_([0x7a,0x65,0x70,0x79,0x69],4)
+        [_0xstr_([0x6f,0x69,0x7d],4)]: _0xstr_([0x7a,0x65,0x70,0x79,0x69],4)
       };
       ;function _0xstr_(a,b){return String.fromCharCode.apply(0,a.map(function(x){return x-b}))};"
     `)
@@ -145,22 +145,20 @@ describe('combined transformations', () => {
     `)
   })
 
-  it('preserve object method keys', () => {
+  it('convert object method keys', () => {
     const code = `
       const obj = {
         "method"() { return "value" },
-        "key": "value",
         async "asyncMethod"() {}
       }
     `
     const result = prepare(code, 4)
     expect(result).toMatchInlineSnapshot(`
       "const obj = {
-        "method"() {
+        [_0xstr_([0x71,0x69,0x78,0x6c,0x73,0x68],4)]() {
           return _0xstr_([0x7a,0x65,0x70,0x79,0x69],4);
         },
-        _0xstr_([0x6f,0x69,0x7d],4): _0xstr_([0x7a,0x65,0x70,0x79,0x69],4),
-        async "asyncMethod"() {}
+        async [_0xstr_([0x65,0x77,0x7d,0x72,0x67,0x51,0x69,0x78,0x6c,0x73,0x68],4)]() {}
       };
       ;function _0xstr_(a,b){return String.fromCharCode.apply(0,a.map(function(x){return x-b}))};"
     `)

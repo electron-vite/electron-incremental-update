@@ -13,7 +13,6 @@ describe(() => {
         writeFileSync(id.replace(/\.cjs$/, '.origin.cjs'), code, 'utf-8')
       },
     })
-
     const outDir = 'tests/dist'
     const result = await build({
       configFile: false,
@@ -32,13 +31,16 @@ describe(() => {
         outDir,
         rolldownOptions: {
           external: defaultExternal,
+          treeshake: {
+            moduleSideEffects: false,
+            propertyReadSideEffects: false,
+          },
           output: {
             minify: true,
           },
         },
       },
     })
-
     expect(result).toMatchInlineSnapshot(`
       [
         RolldownOutputImpl {

@@ -1,6 +1,6 @@
-import { afterAll, describe, expect, it } from 'bun:test'
-import { readFileSync, rmSync } from 'node:fs'
-import { join } from 'node:path/posix'
+import { beforeAll, describe, expect, it } from 'bun:test'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 import {
   aesDecrypt,
@@ -9,7 +9,6 @@ import {
   defaultVerifySignature,
   hashBuffer,
 } from '../src/utils/crypto'
-import { generateKeyPair } from '../src/vite/utils/key'
 
 let plain = ''
 
@@ -26,24 +25,20 @@ describe('test aes', () => {
   })
 })
 describe('test verify', async () => {
-  const buffer = Buffer.from(plain, 'utf-8')
-  const dir = join(__dirname.replace(/\\/g, '/'), '/keys')
+  const dir = join(__dirname, '/keys')
   const privateKeyPath = join(dir, '/keys/key.pem')
   const certPath = join(dir, '/keys/cert.pem')
-  await generateKeyPair(
-    2048,
-    [
-      { name: 'commonName', value: 'test' },
-      { name: 'organizationName', value: 'org.test' },
-    ],
-    365,
-    privateKeyPath,
-    certPath,
-  )
-  const privateKey = readFileSync(privateKeyPath, { encoding: 'utf-8' })
-  const cert = readFileSync(certPath, { encoding: 'utf-8' })
+  const buffer = Buffer.from(plain, 'utf-8')
   const version = '0.0.0-alpha1'
-  const sig = defaultSignature(buffer, privateKey, cert, version)
+
+  let privateKey: string, cert: string, sig: string
+
+  beforeAll(async () => {
+    privateKey = readFileSync(privateKeyPath, { encoding: 'utf-8' })
+    cert = readFileSync(certPath, { encoding: 'utf-8' })
+    sig = defaultSignature(buffer, privateKey, cert, version)
+  })
+
   it('verify passed', () => {
     expect(defaultVerifySignature(buffer, version, sig, cert)).toBeTruthy()
   })
@@ -64,7 +59,4 @@ describe('test verify', async () => {
   //   }
   //   writeCertToMain(filePath, cert)
   // })
-  afterAll(() => {
-    rmSync(dir, { recursive: true })
-  })
 })

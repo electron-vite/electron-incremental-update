@@ -5,7 +5,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { parseVersion } from '../../utils/version'
-import { bytecodeLog } from '../constant'
 import { bytecodeGeneratorScript } from './code'
 
 export const electronModule: {
@@ -49,16 +48,15 @@ export function toRelativePath(filename: string, importer: string): string {
   return relPath.startsWith('.') ? relPath : `./${relPath}`
 }
 
-const logErr = (...args: any[]): void => bytecodeLog.error(args.join(' '), { timestamp: true })
-
 export function compileToBytecode(
   code: string,
+  name: string,
   electronPath: string = getElectronPath(),
-): Promise<Buffer> {
+): Promise<Buffer | string> {
   let data = Buffer.from([])
 
   const bytecodePath = getBytecodeCompilerPath()
-  return new Promise((resolve, reject) => {
+  return new Promise<Buffer>((resolve, reject) => {
     const proc = cp.spawn(electronPath, [bytecodePath], {
       env: { ELECTRON_RUN_AS_NODE: '1' } as any,
       stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
@@ -71,20 +69,20 @@ export function compileToBytecode(
 
     if (proc.stdout) {
       proc.stdout.on('data', (chunk) => (data = Buffer.concat([data, chunk])))
-      proc.stdout.on('error', (err) => logErr(err))
+      proc.stdout.on('error', (err) => reject(err))
       proc.stdout.on('end', () => resolve(data))
     }
 
     if (proc.stderr) {
-      proc.stderr.on('data', (chunk) => logErr('Error: ', chunk.toString()))
-      proc.stderr.on('error', (err) => logErr('Error: ', err))
+      proc.stderr.on('data', (chunk) => reject(chunk.toString()))
+      proc.stderr.on('error', (err) => reject(err))
     }
 
-    proc.addListener('error', (err) => logErr(err))
+    proc.addListener('error', (err) => reject(err))
 
     proc.on('error', (err) => reject(err))
     proc.on('exit', () => resolve(data))
-  })
+  }).catch((e) => `Failed to generate bytecode of [${name}], ${e}`)
 }
 
 export function prepare(code: string, offset?: number): string {
@@ -118,11 +116,16 @@ export function prepare(code: string, offset?: number): string {
             }
 
             if (parent.type === 'ObjectMethod' && parent.key === node) {
+              const obfuscated = obfuscateString(node.value, offset)
+              path.parentPath.node.computed = true
+              path.replaceWith(babel.types.identifier(obfuscated))
+              hasTransformed = true
               return
             }
 
             if (parent.type === 'ObjectProperty' && parent.key === node) {
               const obfuscated = obfuscateString(node.value, offset)
+              path.parentPath.node.computed = true
               path.replaceWith(babel.types.identifier(obfuscated))
               hasTransformed = true
               return

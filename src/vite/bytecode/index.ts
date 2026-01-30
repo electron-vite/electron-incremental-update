@@ -194,8 +194,15 @@ export function bytecodePlugin(
             }
 
             if (bytecodeChunks.has(name)) {
-              const bytecodeBuffer = await compileToBytecode(_code, electronPath)
-              fs.writeFileSync(`${chunkFilePath}c`, bytecodeBuffer)
+              const result = await compileToBytecode(
+                _code,
+                path.join(outDir, chunk.fileName),
+                electronPath,
+              )
+              if (typeof result === 'string') {
+                throw new Error(result)
+              }
+              fs.writeFileSync(`${chunkFilePath}c`, result)
 
               if (chunk.isEntry) {
                 const bytecodeLoaderBlock = getBytecodeLoaderBlock(chunk.fileName)
@@ -206,7 +213,7 @@ export function bytecodePlugin(
                 fs.unlinkSync(chunkFilePath)
               }
 
-              bytecodeFiles.push({ name: `${name}c`, size: bytecodeBuffer.length })
+              bytecodeFiles.push({ name: `${name}c`, size: result.length })
             } else if (chunk.isEntry) {
               const hasBytecodeMoudle = checkHasBytecodeChunk(
                 this.getModuleInfo,
