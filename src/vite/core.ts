@@ -48,6 +48,10 @@ function parseVersionPath(versionPath: string): string {
 export const defaultExternal: Extract<ElectronWithUpdaterOptions['external'], object> = [
   ...builtinModules,
   'electron',
+  'electron/common',
+  'electron/main',
+  'electron/renderer',
+  'electron/utility',
   /^node:/,
   /.*\.(node|dll|dylib|so)$/,
   'original-fs',
@@ -141,6 +145,7 @@ export async function electronWithUpdater(
 
   const { buildAsarOption, buildVersionOption, cert, entryOutDir } = await parseUpdaterOption(
     pkg as PKG,
+    root,
     updater,
   )
 
@@ -149,7 +154,7 @@ export async function electronWithUpdater(
     fs.promises.rm(buildAsarOption.rendererDistPath, { recursive: true, force: true }),
     fs.promises.rm(buildAsarOption.electronDistPath, { recursive: true, force: true }),
     fs.promises.rm(entryOutDir, { recursive: true, force: true }),
-  ]).catch(() => { })
+  ]).catch(() => {})
 
   const define = {
     __EIU_ASAR_BASE_NAME__: JSON.stringify(path.basename(buildAsarOption.asarOutputPath)),

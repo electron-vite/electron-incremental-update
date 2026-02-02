@@ -1,5 +1,7 @@
 import type { Promisable } from '@subframe7536/type-utils'
 
+import path from 'node:path'
+
 import type { UpdateJSON } from '../utils/version'
 import type { BytecodeOptions } from './bytecode'
 import type { ElectronOptions } from './electron/core'
@@ -327,6 +329,7 @@ interface ParseOptionReturn {
 
 export async function parseUpdaterOption(
   pkg: PKG,
+  root: string,
   options: UpdaterOptions = {},
 ): Promise<ParseOptionReturn> {
   const {
@@ -359,10 +362,10 @@ export async function parseUpdaterOption(
   } = options
   const buildAsarOption: _BuildAsarOption = {
     version: pkg.version,
-    asarOutputPath,
-    gzipPath,
-    electronDistPath,
-    rendererDistPath,
+    asarOutputPath: path.resolve(root, asarOutputPath),
+    gzipPath: path.resolve(root, gzipPath),
+    electronDistPath: path.resolve(root, electronDistPath),
+    rendererDistPath: path.resolve(root, rendererDistPath),
     generateGzipFile,
   }
   // generate keys or get from file
@@ -378,7 +381,7 @@ export async function parseUpdaterOption(
     minimumVersion,
     privateKey,
     cert,
-    versionPath,
+    versionPath: path.resolve(root, versionPath),
     generateSignature,
     generateUpdateJson,
   }
