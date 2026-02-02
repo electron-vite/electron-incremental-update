@@ -1,5 +1,5 @@
 import type { Promisable } from '@subframe7536/type-utils'
-import type { Plugin, ResolvedConfig } from 'vite'
+import type { Plugin } from 'vite'
 
 import fs from 'node:fs'
 import path from 'node:path'
@@ -50,7 +50,7 @@ export function bytecodePlugin(
   options: BytecodeOptions,
 ): Plugin | null {
   const { enable, preload = false, electronPath, beforeCompile } = options
-
+  const cwd = process.cwd()
   // Early validation (fail fast)
   if (!enable) {
     return null
@@ -70,17 +70,12 @@ export function bytecodePlugin(
     )
   }
 
-  let config: ResolvedConfig
-  const bytecodeFiles: { name: string; size: number }[] = []
+  const bytecodeFiles: { file: string; size: number }[] = []
 
   return {
     name: bytecodeId,
     apply: 'build',
     enforce: 'post',
-
-    configResolved(resolvedConfig) {
-      config = resolvedConfig
-    },
 
     generateBundle(_, bundle) {
       // Only emit loader if actual JS chunks exist (skip if only assets)
@@ -143,7 +138,7 @@ export function bytecodePlugin(
           // 4. Write bytecode file (.jsc)
           const bytecodePath = `${absPath}c`
           fs.writeFileSync(bytecodePath, bytecode)
-          bytecodeFiles.push({ name: `${fileName}c`, size: bytecode.length })
+          bytecodeFiles.push({ file: bytecodePath, size: bytecode.length })
 
           // 5. Handle JS file replacement
           if (chunk.isEntry) {
@@ -160,19 +155,42 @@ export function bytecodePlugin(
     },
 
     // Optimized: Batch logging with single I/O operation
-    closeBundle() {
+    async closeBundle() {
       if (bytecodeFiles.length === 0) {
         return
       }
+      const { styleText } = await import('node:util')
+      // Calculate relative paths and find max base name length in one pass (O(n))
+      let maxBaseLength = 0
+      const relativeFiles = bytecodeFiles.map((f) => {
+        const relPath = path.parse(path.relative(cwd, f.file))
+        const dir = normalizePath(relPath.dir)
+        const base = relPath.base
 
-      const outDir = normalizePath(path.relative(config.root, config.build.outDir)) + '/'
+        // Track max base name length for alignment
+        maxBaseLength = Math.max(maxBaseLength, base.length)
 
-      const logs = bytecodeFiles.map((f) => `- ${outDir}${f.name} [${readableSize(f.size)}]`)
+        return { ...f, relPath, dir, base }
+      })
 
+      // Format each line with colors and alignment (O(n))
+      const logs = relativeFiles.map((f) => {
+        const dirDisplay = f.dir === '.' ? '' : `${styleText('dim', f.dir + '/')}`
+        const baseDisplay = styleText('magenta', f.base)
+        const sizeDisplay = styleText(['dim', 'bold'], readableSize(f.size))
+
+        // Align sizes by padding based on base name length
+        const padding = ' '.repeat(maxBaseLength - f.base.length)
+
+        return `${dirDisplay}${baseDisplay}${padding}  ${sizeDisplay}`
+      })
+
+      // Single join operation (O(n))
       bytecodeLog.info(
         [
           `${bytecodeFiles.length} bundle${bytecodeFiles.length === 1 ? '' : 's'} compiled to bytecode:`,
           ...logs,
+          '',
         ].join('\n'),
         { timestamp: true },
       )

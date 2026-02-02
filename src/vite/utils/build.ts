@@ -14,14 +14,22 @@ import { readableSize } from './file'
  * @param options - Asar build options
  * @returns Buffer of the built asar file
  */
-export async function buildAsar({
-  version,
-  asarOutputPath,
-  gzipPath,
-  electronDistPath,
-  rendererDistPath,
-  generateGzipFile,
-}: _BuildAsarOption): Promise<Buffer> {
+export async function buildAsar(
+  root: string,
+  {
+    version,
+    asarOutputPath,
+    electronDistPath,
+    rendererDistPath,
+    gzipPath,
+    generateGzipFile,
+  }: _BuildAsarOption,
+): Promise<Buffer> {
+  electronDistPath = path.resolve(root, electronDistPath)
+  asarOutputPath = path.resolve(root, asarOutputPath)
+  rendererDistPath = path.resolve(root, rendererDistPath)
+  gzipPath = path.resolve(root, gzipPath)
+
   const rPath = path.join(electronDistPath, 'renderer')
   await fs.promises.cp(rendererDistPath, rPath, { recursive: true })
   fs.writeFileSync(path.join(electronDistPath, 'version'), version)

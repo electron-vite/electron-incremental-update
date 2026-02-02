@@ -145,16 +145,18 @@ export async function electronWithUpdater(
 
   const { buildAsarOption, buildVersionOption, cert, entryOutDir } = await parseUpdaterOption(
     pkg as PKG,
-    root,
     updater,
   )
 
   log.info(`Clear cache files`, { timestamp: true })
-  await Promise.all([
-    fs.promises.rm(buildAsarOption.rendererDistPath, { recursive: true, force: true }),
-    fs.promises.rm(buildAsarOption.electronDistPath, { recursive: true, force: true }),
-    fs.promises.rm(entryOutDir, { recursive: true, force: true }),
-  ]).catch(() => {})
+  await Promise.all(
+    [buildAsarOption.rendererDistPath, buildAsarOption.electronDistPath, entryOutDir].map((p) =>
+      fs.promises.rm(path.resolve(root, p), {
+        recursive: true,
+        force: true,
+      }),
+    ),
+  ).catch(() => {})
 
   const define = {
     __EIU_ASAR_BASE_NAME__: JSON.stringify(path.basename(buildAsarOption.asarOutputPath)),
@@ -270,7 +272,7 @@ export async function electronWithUpdater(
               })
               if (isBuild) {
                 try {
-                  const buffer = await buildAsar(buildAsarOption)
+                  const buffer = await buildAsar(root, buildAsarOption)
                   if (!buildVersionJson && !isCI) {
                     log.warn(
                       'No `buildVersionJson` option setup, skip build version json. Only build in CI by default',
