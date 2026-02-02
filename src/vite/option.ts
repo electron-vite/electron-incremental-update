@@ -3,6 +3,7 @@ import type { Promisable } from '@subframe7536/type-utils'
 import type { UpdateJSON } from '../utils/version'
 import type { BytecodeOptions } from './bytecode'
 import type { ElectronOptions } from './electron/core'
+import type { NotBundleOptions } from './electron/plugin'
 import type { DistinguishedName } from './utils/key'
 
 import { defaultSignature } from '../utils/crypto'
@@ -75,8 +76,14 @@ export interface ElectronWithUpdaterOptions {
    */
   bytecode?: boolean | BytecodeOptions
   /**
-   * Use `NotBundle()` plugin in main
+   * Faster dev startup by externalize all node modules in entry and main.
+   *
+   * Only works in development (`isBuild === false`).
    * @default true
+   */
+  notBundle?: boolean | NotBundleOptions
+  /**
+   * @deprecated use `notBundle` instead
    */
   useNotBundle?: boolean
   /**
@@ -91,6 +98,10 @@ export interface ElectronWithUpdaterOptions {
    * external `dependencies` in `package.json` by default
    */
   external?: (string | RegExp)[] | boolean
+  /**
+   * Build entry/main/preload in parallel, make build faster.
+   */
+  parallel?: boolean
   /**
    * Options for entry (app.asar)
    *

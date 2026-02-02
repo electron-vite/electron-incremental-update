@@ -3,6 +3,7 @@ import { defineElectronConfig } from './src/vite'
 export default defineElectronConfig({
   root: './playground',
   bytecode: true,
+  parallel: true,
   entry: {
     files: ['./entry.ts', './native.ts'],
   },

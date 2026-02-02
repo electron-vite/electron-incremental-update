@@ -110,6 +110,7 @@ export async function electronWithUpdater(
     isBuild,
     root = process.cwd(),
     external,
+    parallel = false,
     entry: _entry,
     main: _main,
     preload: _preload,
@@ -118,7 +119,7 @@ export async function electronWithUpdater(
     buildVersionJson,
     updater,
     bytecode,
-    useNotBundle = true,
+    notBundle: notBundleOption = true,
   } = options
 
   const pkg = await loadPackageJSON(root)
@@ -179,7 +180,9 @@ export async function electronWithUpdater(
       vite: mergeConfig(
         {
           plugins: [
-            !isBuild && useNotBundle && notBundle(),
+            !isBuild &&
+              notBundleOption &&
+              notBundle(typeof notBundleOption === 'object' ? notBundleOption : undefined),
             bytecodeOptions && bytecodePlugin('main', minify, isESM, bytecodeOptions),
           ],
           build: {
@@ -247,7 +250,9 @@ export async function electronWithUpdater(
       {
         plugins: [
           bytecodeOptions && bytecodePlugin('main', minify, isESM, bytecodeOptions),
-          !isBuild && useNotBundle && notBundle(),
+          !isBuild &&
+            notBundleOption &&
+            notBundle(typeof notBundleOption === 'object' ? notBundleOption : undefined),
           {
             name: `${id}:entry`,
             enforce: 'post',
@@ -307,5 +312,5 @@ export async function electronWithUpdater(
     ),
   })
 
-  return electron(isESM, normalizePath(path.resolve(root)), _electronOptions)
+  return electron(isESM, normalizePath(path.resolve(root)), parallel, _electronOptions)
 }

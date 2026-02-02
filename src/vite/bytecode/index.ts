@@ -50,8 +50,6 @@ export function bytecodePlugin(
   options: BytecodeOptions,
 ): Plugin | null {
   const { enable, preload = false, electronPath, beforeCompile } = options
-  const cwd = process.cwd()
-  // Early validation (fail fast)
   if (!enable) {
     return null
   }
@@ -70,6 +68,8 @@ export function bytecodePlugin(
     )
   }
 
+  let hasJsChunks = false
+  const cwd = process.cwd()
   const bytecodeFiles: { file: string; size: number }[] = []
 
   return {
@@ -79,7 +79,7 @@ export function bytecodePlugin(
 
     generateBundle(_, bundle) {
       // Only emit loader if actual JS chunks exist (skip if only assets)
-      const hasJsChunks = Object.values(bundle).some(
+      hasJsChunks = Object.values(bundle).some(
         (file) =>
           file.type === 'chunk' &&
           (file.fileName.endsWith('.js') || file.fileName.endsWith('.cjs')),
@@ -97,7 +97,7 @@ export function bytecodePlugin(
 
     // Optimized: Unified processing with minimal I/O and no graph traversal
     async writeBundle({ dir }, output) {
-      if (!dir) {
+      if (!dir || !hasJsChunks) {
         return
       }
 
@@ -188,7 +188,7 @@ export function bytecodePlugin(
       // Single join operation (O(n))
       bytecodeLog.info(
         [
-          `${bytecodeFiles.length} bundle${bytecodeFiles.length === 1 ? '' : 's'} compiled to bytecode:`,
+          `${bytecodeFiles.length} chunk${bytecodeFiles.length === 1 ? '' : 's'} compiled to bytecode:`,
           ...logs,
           '',
         ].join('\n'),

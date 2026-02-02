@@ -1,5 +1,5 @@
 import type { AnyFunction } from '@subframe7536/type-utils'
-import type { ChildProcessWithoutNullStreams, StdioOptions } from 'node:child_process'
+import type { StdioOptions } from 'node:child_process'
 
 import type { ElectronOptions } from './electron/core'
 
@@ -32,11 +32,11 @@ export async function filterErrorMessageStartup(
       ? ['inherit', 'pipe', 'pipe', 'ignore', 'ipc']
       : ['inherit', 'pipe', 'pipe', 'ipc']
   await args.startup(undefined, { stdio })
-  const elec = (process as unknown as { electronApp: ChildProcessWithoutNullStreams }).electronApp
-  elec.stdout.addListener('data', (data: Buffer) => {
+  const elec = process.electronApp
+  elec.stdout?.addListener('data', (data: Buffer) => {
     console.log(data.toString().trimEnd())
   })
-  elec.stderr.addListener('data', (data: Buffer) => {
+  elec.stderr?.addListener('data', (data: Buffer) => {
     const message = data.toString()
     if (filter(message)) {
       console.error(message)

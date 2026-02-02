@@ -22,6 +22,8 @@ This project is built on top of [vite-plugin-electron](https://github.com/electr
     - [Use Native Modules](#use-native-modules)
       - [Example](#example)
       - [Result in app.asar](#result-in-appasar)
+    - [Parallel Build](#parallel-build)
+    - [NotBundle](#notbundle)
     - [Bytecode Protection](#bytecode-protection)
       - [Benefits](#benefits)
       - [Limitation](#limitation)
@@ -525,6 +527,30 @@ After: Clean 😍
 │   ├── image.js
 │   └── image.win32-x64-msvc.node
 └── package.json
+```
+
+### Parallel Build
+
+Build entry/main/preload in parallel, make build faster.
+
+```ts
+electronWithUpdater({
+  // ...
+  parallel: true,
+})
+```
+
+### NotBundle
+
+Faster dev startup by externalize all node modules in entry and main.
+
+Enabled by default, only works in development (`isBuild === false`).
+
+```ts
+electronWithUpdater({
+  // ...
+  notBundle: false, // or options
+})
 ```
 
 ### Bytecode Protection

@@ -38,6 +38,7 @@ export function build(isESM: boolean, options: ElectronOptions): ReturnType<type
 export default function electron(
   isESM: boolean,
   root: string,
+  parallel: boolean,
   options: ElectronOptions | ElectronOptions[],
 ): Plugin[] {
   const optionsArray = Array.isArray(options) ? options : [options]
@@ -51,7 +52,13 @@ export default function electron(
   }
 
   async function parallelBuild(options: ElectronOptions[]) {
-    await Promise.all(options.map(build.bind(build, isESM)))
+    if (parallel) {
+      await Promise.all(options.map(build.bind(build, isESM)))
+    } else {
+      for (const opt of options) {
+        await build(isESM, opt)
+      }
+    }
   }
 
   return [

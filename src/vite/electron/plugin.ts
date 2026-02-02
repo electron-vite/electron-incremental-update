@@ -1,22 +1,19 @@
 import type { Plugin } from 'vite'
 
-import { createRequire } from 'node:module'
-
 export interface NotBundleOptions {
-  filter?: (id: string) => void | boolean
+  filter?: (id: string, importer: string) => void | boolean
 }
 
 /**
  * @see https://github.com/vitejs/vite/blob/v4.4.7/packages/vite/src/node/utils.ts#L140
  */
 export const bareImportRE: RegExp = /^(?![a-zA-Z]:)[\w@](?!.*:\/\/)/
-const nodeModulesRE: RegExp = /\/node_modules\//
 
 /**
  * During dev, we exclude the `cjs` npm-pkg from bundle, mush like Vite :)
  */
 export function notBundle(options: NotBundleOptions = {}): Plugin {
-  const externalIds = new Set<string>()
+  const cache = new Set<string>()
 
   return {
     name: 'vite-plugin-electron:not-bundle',
@@ -25,35 +22,23 @@ export function notBundle(options: NotBundleOptions = {}): Plugin {
     apply: 'serve',
 
     resolveId: {
-      filter: {
-        id: bareImportRE,
-      },
+      filter: { id: bareImportRE },
+      order: 'pre',
       async handler(source, importer) {
-        if (!importer || importer.includes('node_modules/')) {
-          return
-        }
-        if (externalIds.has(source)) {
-          return { id: source, external: true }
+        if (!importer || cache.has(source)) {
+          return cache.has(source) ? { id: source, external: true } : null
         }
 
-        const resolved = await this.resolve(source, importer, {
-          skipSelf: true,
-        })
-
-        const id = resolved?.id
-        if (!id || !nodeModulesRE.test(id) || options.filter?.(id) === false) {
+        if (options.filter?.(source, importer)) {
           return
         }
 
-        try {
-          // Because we build Main process into `cjs`, so a npm-pkg can be loaded by `require()`.
-          createRequire(importer).resolve(source)
-        } catch {
+        const resolved = await this.resolve(source, importer, { skipSelf: true })
+        if (!resolved?.id?.includes('/node_modules/')) {
           return
         }
 
-        externalIds.add(source)
-
+        cache.add(source)
         return {
           id: source,
           external: true,
