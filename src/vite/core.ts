@@ -173,7 +173,7 @@ export async function electronWithUpdater(
         {
           plugins: [
             !isBuild && useNotBundle && notBundle(),
-            bytecodeOptions && bytecodePlugin('main', isESM, bytecodeOptions),
+            bytecodeOptions && bytecodePlugin('main', isESM, minify, bytecodeOptions),
           ],
           build: {
             sourcemap,
@@ -183,6 +183,7 @@ export async function electronWithUpdater(
               external: finalExternal,
               platform: 'node',
               output: {
+                minify: { codegen: { removeWhitespace: true } },
                 polyfillRequire: false,
                 exports: 'named',
               },
@@ -204,7 +205,7 @@ export async function electronWithUpdater(
       },
       vite: mergeConfig(
         {
-          plugins: [bytecodeOptions && bytecodePlugin('preload', isESM, bytecodeOptions)],
+          plugins: [bytecodeOptions && bytecodePlugin('preload', isESM, minify, bytecodeOptions)],
           build: {
             sourcemap: sourcemap ? 'inline' : undefined,
             minify,
@@ -213,6 +214,7 @@ export async function electronWithUpdater(
               external: finalExternal,
               input: _preload.files,
               output: {
+                minify: { codegen: { removeWhitespace: true } },
                 // preload should use cjs format and not split
                 format: 'cjs',
                 codeSplitting: false,
@@ -237,7 +239,7 @@ export async function electronWithUpdater(
     vite: mergeConfig<InlineConfig, InlineConfig>(
       {
         plugins: [
-          bytecodeOptions && bytecodePlugin('main', isESM, bytecodeOptions),
+          bytecodeOptions && bytecodePlugin('main', isESM, minify, bytecodeOptions),
           !isBuild && useNotBundle && notBundle(),
           {
             name: `${id}:entry`,
@@ -287,6 +289,7 @@ export async function electronWithUpdater(
             external: finalExternal,
             platform: 'node',
             output: {
+              minify: { codegen: { removeWhitespace: true } },
               polyfillRequire: false,
             },
           },

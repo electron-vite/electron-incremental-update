@@ -95,6 +95,7 @@ function checkHasBytecodeChunk(
  */
 export function bytecodePlugin(
   env: 'preload' | 'main',
+  minify: boolean,
   isESM: boolean,
   options: BytecodeOptions,
 ): Plugin | null {
@@ -169,15 +170,8 @@ export function bytecodePlugin(
         bundles.map(async (name) => {
           const chunk = output[name]
           if (chunk.type === 'chunk') {
-            let _code = prepare(chunk.code)
-            const chunkFilePath = path.resolve(outDir, name)
-
-            if (beforeCompile) {
-              const cbResult = await beforeCompile(_code, chunkFilePath)
-              if (cbResult) {
-                _code = cbResult
-              }
-            }
+            let _code = prepare(chunk.code, minify)
+            const chunkFilePath = path.join(outDir, name)
 
             if (bytecodeRE && _code.match(bytecodeRE)) {
               let match: RegExpExecArray | null
@@ -191,6 +185,13 @@ export function bytecodePlugin(
                 })
               }
               _code = s.toString()
+            }
+
+            if (beforeCompile) {
+              const cbResult = await beforeCompile(_code, chunkFilePath)
+              if (cbResult) {
+                _code = cbResult
+              }
             }
 
             if (bytecodeChunks.has(name)) {

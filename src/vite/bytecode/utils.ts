@@ -85,10 +85,11 @@ export function compileToBytecode(
   }).catch((e) => `Failed to generate bytecode of [${name}], ${e}`)
 }
 
-export function prepare(code: string, offset?: number): string {
+export function prepare(code: string, minify: boolean, offset?: number): string {
   let hasTransformed = false
 
   const result = babel.transform(code, {
+    minified: minify,
     plugins: [
       '@babel/plugin-transform-arrow-functions',
       '@babel/plugin-transform-template-literals',
