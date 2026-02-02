@@ -85,17 +85,24 @@ export function compileToBytecode(
   }).catch((e) => `Failed to generate bytecode of [${name}], ${e}`)
 }
 
-export function prepare(code: string, minify: boolean, offset?: number): string {
-  let hasTransformed = false
+interface ObfuscateState {
+  hasTransformed?: boolean
+}
 
-  const result = babel.transform(code, {
+export function prepare(
+  code: string,
+  minify: boolean,
+  bytecodeFileNames: string[],
+  offset?: number,
+): babel.BabelFileResult | null {
+  return babel.transform(code, {
     minified: minify,
     plugins: [
       '@babel/plugin-transform-arrow-functions',
       '@babel/plugin-transform-template-literals',
       () => ({
         visitor: {
-          StringLiteral(path: any) {
+          StringLiteral(path: any, state: ObfuscateState) {
             const parent = path.parent
             const node = path.node
 
@@ -120,7 +127,7 @@ export function prepare(code: string, minify: boolean, offset?: number): string 
               const obfuscated = obfuscateString(node.value, offset)
               path.parentPath.node.computed = true
               path.replaceWith(babel.types.identifier(obfuscated))
-              hasTransformed = true
+              state.hasTransformed = true
               return
             }
 
@@ -128,23 +135,60 @@ export function prepare(code: string, minify: boolean, offset?: number): string 
               const obfuscated = obfuscateString(node.value, offset)
               path.parentPath.node.computed = true
               path.replaceWith(babel.types.identifier(obfuscated))
-              hasTransformed = true
+              state.hasTransformed = true
               return
             }
             if (!node.value.trim()) {
               return
             }
             path.replaceWith(babel.types.identifier(obfuscateString(node.value, offset)))
-            hasTransformed = true
+            state.hasTransformed = true
+          },
+          Program: {
+            exit(path: any, state: ObfuscateState) {
+              if (state.hasTransformed) {
+                try {
+                  const ast = babel.parse(decodeFn)
+                  if (ast && ast.program && ast.program.body.length) {
+                    path.unshiftContainer('body', ast.program.body)
+                  }
+                } catch (e) {
+                  console.error('Failed to inject decodeFn:', e)
+                }
+              }
+            },
+          },
+        },
+      }),
+      () => ({
+        visitor: {
+          CallExpression(path: babel.NodePath<babel.types.CallExpression>) {
+            if (
+              !babel.types.isIdentifier(path.node.callee, { name: 'require' }) ||
+              path.node.arguments.length === 0
+            ) {
+              return
+            }
+
+            const arg = path.node.arguments[0]
+            if (!babel.types.isStringLiteral(arg)) {
+              return
+            }
+
+            const requirePath = arg.value
+            const matchedFile = bytecodeFileNames.find((file) => requirePath.endsWith(file))
+
+            if (matchedFile && matchedFile.endsWith('.js')) {
+              const newFileName = matchedFile.replace(/\.js$/, '.jsc')
+              const newRequirePath = requirePath.replace(matchedFile, newFileName)
+
+              path.node.arguments[0] = babel.types.stringLiteral(newRequirePath)
+            }
           },
         },
       }),
     ],
   })
-
-  const transformedCode = result?.code || code
-
-  return hasTransformed ? `${transformedCode}\n${decodeFn}` : transformedCode
 }
 
 export const decodeFn =

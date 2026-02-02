@@ -149,7 +149,7 @@ export async function electronWithUpdater(
     fs.promises.rm(buildAsarOption.rendererDistPath, { recursive: true, force: true }),
     fs.promises.rm(buildAsarOption.electronDistPath, { recursive: true, force: true }),
     fs.promises.rm(entryOutDir, { recursive: true, force: true }),
-  ]).catch(() => {})
+  ]).catch(() => { })
 
   const define = {
     __EIU_ASAR_BASE_NAME__: JSON.stringify(path.basename(buildAsarOption.asarOutputPath)),
@@ -173,7 +173,7 @@ export async function electronWithUpdater(
         {
           plugins: [
             !isBuild && useNotBundle && notBundle(),
-            bytecodeOptions && bytecodePlugin('main', isESM, minify, bytecodeOptions),
+            bytecodeOptions && bytecodePlugin('main', minify, isESM, bytecodeOptions),
           ],
           build: {
             sourcemap,
@@ -205,7 +205,7 @@ export async function electronWithUpdater(
       },
       vite: mergeConfig(
         {
-          plugins: [bytecodeOptions && bytecodePlugin('preload', isESM, minify, bytecodeOptions)],
+          plugins: [bytecodeOptions && bytecodePlugin('preload', minify, isESM, bytecodeOptions)],
           build: {
             sourcemap: sourcemap ? 'inline' : undefined,
             minify,
@@ -239,7 +239,7 @@ export async function electronWithUpdater(
     vite: mergeConfig<InlineConfig, InlineConfig>(
       {
         plugins: [
-          bytecodeOptions && bytecodePlugin('main', isESM, minify, bytecodeOptions),
+          bytecodeOptions && bytecodePlugin('main', minify, isESM, bytecodeOptions),
           !isBuild && useNotBundle && notBundle(),
           {
             name: `${id}:entry`,

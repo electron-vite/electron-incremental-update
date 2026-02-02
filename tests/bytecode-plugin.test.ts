@@ -7,7 +7,7 @@ import { defaultExternal } from '../src/vite/core'
 
 describe(() => {
   it('basic plugin usage', async () => {
-    const plugin = bytecodePlugin('main', false, {
+    const plugin = bytecodePlugin('main', false, false, {
       enable: true,
       beforeCompile(code, id) {
         writeFileSync(id.replace(/\.cjs$/, '.origin.cjs'), code, 'utf-8')

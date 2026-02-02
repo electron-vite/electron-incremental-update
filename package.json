@@ -73,7 +73,6 @@
     "@babel/plugin-transform-template-literals": "^7.27.1",
     "ci-info": "^4.3.1",
     "local-pkg": "^1.1.2",
-    "magic-string": "^0.30.21",
     "selfsigned": "^5.5.0"
   },
   "devDependencies": {

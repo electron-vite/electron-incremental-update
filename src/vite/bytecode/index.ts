@@ -1,7 +1,6 @@
 import type { Promisable } from '@subframe7536/type-utils'
 import type { Plugin, ResolvedConfig } from 'vite'
 
-import MagicString from 'magic-string'
 import fs from 'node:fs'
 import path from 'node:path'
 import { normalizePath } from 'vite'
@@ -163,30 +162,12 @@ export function bytecodePlugin(
         .filter((chunk) => !chunk.isEntry)
         .map((chunk) => path.basename(chunk.fileName))
 
-      const pattern = nonEntryChunks.map((chunk) => `(${chunk})`).join('|')
-      const bytecodeRE = pattern ? new RegExp(`require\\(\\S*(?=(${pattern})\\S*\\))`, 'g') : null
-
       await Promise.all(
         bundles.map(async (name) => {
           const chunk = output[name]
           if (chunk.type === 'chunk') {
-            let _code = prepare(chunk.code, minify)
+            let _code = prepare(chunk.code, minify, nonEntryChunks)?.code || chunk.code
             const chunkFilePath = path.join(outDir, name)
-
-            if (bytecodeRE && _code.match(bytecodeRE)) {
-              let match: RegExpExecArray | null
-              const s = new MagicString(_code)
-              // eslint-disable-next-line no-cond-assign
-              while ((match = bytecodeRE.exec(_code))) {
-                const [prefix, chunkName] = match
-                const len = prefix.length + chunkName.length
-                s.overwrite(match.index, match.index + len, `${prefix + chunkName}c`, {
-                  contentOnly: true,
-                })
-              }
-              _code = s.toString()
-            }
-
             if (beforeCompile) {
               const cbResult = await beforeCompile(_code, chunkFilePath)
               if (cbResult) {
@@ -211,7 +192,7 @@ export function bytecodePlugin(
                 const code = `${useStrict}\n${bytecodeLoaderBlock}\nmodule.exports=${bytecodeModuleBlock}\n`
                 fs.writeFileSync(chunkFilePath, code)
               } else {
-                fs.unlinkSync(chunkFilePath)
+                delete output[name]
               }
 
               bytecodeFiles.push({ name: `${name}c`, size: result.length })
