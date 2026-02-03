@@ -50,7 +50,6 @@ describe(() => {
             ],
             "chunks": [
               BindingOutputChunk {},
-              BindingOutputChunk {},
             ],
           },
           "output": [native code],
