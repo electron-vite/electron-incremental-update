@@ -249,7 +249,7 @@ export async function electronWithUpdater(
     vite: mergeConfig<InlineConfig, InlineConfig>(
       {
         plugins: [
-          bytecodeOptions && bytecodePlugin('main', minify, isESM, bytecodeOptions),
+          bytecodeOptions && bytecodePlugin('entry', minify, isESM, bytecodeOptions),
           !isBuild &&
             notBundleOption &&
             notBundle(typeof notBundleOption === 'object' ? notBundleOption : undefined),

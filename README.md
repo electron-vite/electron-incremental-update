@@ -1,6 +1,7 @@
 # Electron Incremental Update
 
-This project is built on top of [vite-plugin-electron](https://github.com/electron-vite/vite-plugin-electron), offers a lightweight update solution for Electron applications without using native executables.
+This project offers a lightweight update solution for Electron applications without using native executables.
+
 
 - [Electron Incremental Update](#electron-incremental-update)
   - [Key Features](#key-features)
@@ -101,7 +102,7 @@ src
 
 The entry is used to load the application and initialize the `Updater`
 
-`Updater` use the `provider` to check and download the update. The built-in `GithubProvider` is based on `BaseProvider`, which implements the `IProvider` interface (see [types](#provider)). And the `provider` is optional, you can setup later
+`Updater` use the `provider` to check and download the update. The built-in `GithubProvider` is based on `BaseProvider`, which implements the [`IProvider`](./src/provider/types.ts) interface. And the `provider` is optional, you can setup it later.
 
 in `electron/entry.ts`
 

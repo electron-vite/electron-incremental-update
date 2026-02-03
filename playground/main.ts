@@ -1,9 +1,22 @@
 import { app, BrowserWindow } from 'electron'
 
 import { startupWithUpdater } from '../src/entry'
-import { getPathFromPreload, loadPage, requireNative } from '../src/utils'
+import {
+  getAppVersion,
+  getEntryVersion,
+  getPathFromAppNameAsar,
+  getPathFromPreload,
+  loadPage,
+  requireNative,
+} from '../src/utils'
 
 export default startupWithUpdater(() => {
+  console.table({
+    [`${app.name}.asar path:`]: getPathFromAppNameAsar(),
+    'app version:': getAppVersion(),
+    'entry (installer) version:': getEntryVersion(),
+    'electron version:': process.versions.electron,
+  })
   app
     .whenReady()
     .then(() => import('./utils'))

@@ -44,7 +44,7 @@ function getBytecodeLoaderBlock(chunkFileName: string): string {
 }
 
 export function bytecodePlugin(
-  env: 'preload' | 'main',
+  env: 'preload' | 'main' | 'entry',
   minify: boolean,
   isESM: boolean,
   options: BytecodeOptions,
@@ -188,7 +188,7 @@ export function bytecodePlugin(
       // Single join operation (O(n))
       bytecodeLog.info(
         [
-          `${bytecodeFiles.length} chunk${bytecodeFiles.length === 1 ? '' : 's'} compiled to bytecode:`,
+          `[${env}] ${bytecodeFiles.length} chunk${bytecodeFiles.length === 1 ? '' : 's'} compiled to bytecode:`,
           ...logs,
           '',
         ].join('\n'),

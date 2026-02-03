@@ -85,10 +85,6 @@ export class Updater<
       }
       this.logger.info('No logger set, enable dev-only logger')
     }
-
-    if (!this.provider) {
-      this.logger?.debug('WARN: No update provider')
-    }
   }
 
   /**
@@ -228,7 +224,7 @@ export class Updater<
 
     if (isDev && !this.forceUpdate && !data) {
       return emitUnavailable(
-        'Skip check update in dev mode. To force update, set `updater.forceUpdate` to true or call checkUpdate with UpdateJSON',
+        'Skip check update in dev mode. To force update, set `updater.forceUpdate` to `true` or call checkUpdate with UpdateJSON',
         'UNAVAILABLE_DEV',
       )
     }
