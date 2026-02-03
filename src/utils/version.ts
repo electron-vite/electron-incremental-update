@@ -117,8 +117,8 @@ const is = (j: any): boolean => !!(j && j.minimumVersion && j.signature && j.ver
  * Check is `UpdateJSON`
  * @param json any variable
  */
-export function isUpdateJSON(json: any): json is UpdateJSON {
-  return is(json) && is(json?.beta)
+export function isUpdateJSON(json: object): json is UpdateJSON {
+  return json && is(json) && is((json as any).beta)
 }
 
 /**

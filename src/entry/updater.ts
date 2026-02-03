@@ -8,7 +8,6 @@ import type {
   UpdateInfoWithURL,
   UpdateJSONWithURL,
 } from '../provider/types'
-import type { UpdateInfo, UpdateJSON } from '../utils/version'
 import type {
   Logger,
   UpdateInfoWithExtraVersion,
@@ -176,19 +175,19 @@ export class Updater<
   /**
    * Check update info using default options
    */
-  public async checkForUpdates(): Promise<boolean>
-  /**
-   * Check update info using existing update json
-   * @param data existing update json
-   */
-  public async checkForUpdates(data: UpdateJSON | UpdateJSONWithURL): Promise<boolean>
-  public async checkForUpdates(data?: UpdateJSON | UpdateJSONWithURL): Promise<boolean> {
+  public async checkForUpdates(): Promise<boolean> {
     const emitUnavailable = (msg: string, code: UpdaterUnavailableCode, info?: T): false => {
       this.logger?.info(`[${code}] ${msg}`)
       this.logger?.debug('Check update end')
       this.processing = false
       this.emit('update-not-available', code, msg, info)
       return false
+    }
+
+    if (!this.provider) {
+      const msg = 'No update json or provider'
+      this.err('Check update failed', 'ERR_PARAM', msg)
+      return emitUnavailable(msg, 'UNAVAILABLE_ERROR')
     }
 
     if (this.processing) {
@@ -198,13 +197,7 @@ export class Updater<
     this.processing = true
     this.logger?.debug('Check update start')
 
-    if (!data && !this.provider) {
-      const msg = 'No update json or provider'
-      this.err('Check update failed', 'ERR_PARAM', msg)
-      return emitUnavailable(msg, 'UNAVAILABLE_ERROR')
-    }
-
-    const _data = await this.fetch('json', data as any)
+    const _data = await this.fetch('json')
     if (!_data) {
       return emitUnavailable('Failed to get update info', 'UNAVAILABLE_ERROR')
     }
@@ -222,9 +215,9 @@ export class Updater<
     } as T
     this.logger?.debug(`Checked update, version: ${version}, signature: ${signature}`)
 
-    if (isDev && !this.forceUpdate && !data) {
+    if (isDev && !this.forceUpdate) {
       return emitUnavailable(
-        'Skip check update in dev mode. To force update, set `updater.forceUpdate` to `true` or call checkUpdate with UpdateJSON',
+        'Skip check update in dev mode. To force update, set `updater.forceUpdate` to `true`',
         'UNAVAILABLE_DEV',
       )
     }
@@ -265,26 +258,18 @@ export class Updater<
   /**
    * Download update using default options
    */
-  public async downloadUpdate(): Promise<boolean>
-  /**
-   * Download update using existing `asar.gz` buffer and signature
-   * @param data existing `asar.gz` buffer
-   * @param info update info
-   */
-  public async downloadUpdate(
-    data: Uint8Array,
-    info: Omit<UpdateInfo, 'minimumVersion'>,
-  ): Promise<boolean>
-  public async downloadUpdate(
-    data?: Uint8Array,
-    info?: Omit<UpdateInfo, 'minimumVersion'>,
-  ): Promise<boolean> {
+  public async downloadUpdate(): Promise<boolean> {
     const emitError = (code: UpdaterErrorCode, errorInfo: string): false => {
       this.err(`Download update failed`, code, errorInfo)
       this.logger?.debug('Download update end')
       this.processing = false
       return false
     }
+
+    if (!this.provider) {
+      return emitError('ERR_PARAM', 'No update asar buffer and provider')
+    }
+
     if (this.processing) {
       this.logger?.info('Updater is already processing, skip download update')
       return false
@@ -292,22 +277,14 @@ export class Updater<
     this.processing = true
     this.logger?.debug('Download update start')
 
-    const _sig = info?.signature ?? this.info?.signature
-    const _version = info?.version ?? this.info?.version
+    const _sig = this.info?.signature
+    const _version = this.info?.version
 
     if (!_sig || !_version) {
-      return emitError(
-        'ERR_PARAM',
-        'No update signature, please call `checkUpdate` first or manually setup params',
-      )
+      return emitError('ERR_PARAM', 'No update signature, please call `checkUpdate` first')
     }
 
-    if (!data && !this.provider) {
-      return emitError('ERR_PARAM', 'No update asar buffer and provider')
-    }
-
-    // if typeof data is Buffer, the version will not be used
-    const buffer = await this.fetch('buffer', data ? Buffer.from(data) : undefined)
+    const buffer = await this.fetch('buffer')
 
     if (!buffer) {
       return emitError('ERR_PARAM', 'No update asar file buffer')

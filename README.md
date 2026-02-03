@@ -2,7 +2,6 @@
 
 This project offers a lightweight update solution for Electron applications without using native executables.
 
-
 - [Electron Incremental Update](#electron-incremental-update)
   - [Key Features](#key-features)
     - [Dual Asar Architecture](#dual-asar-architecture)
@@ -350,6 +349,14 @@ updater.provider = new GitHubProvider({
     url.pathname = `https://github.com${url.pathname}`
     return url
   },
+})
+```
+
+Or use built-in `LocalDevProvider`
+
+```ts
+const provider = new LocalDevProvider({
+  baseDir: process.pwd()
 })
 ```
 
