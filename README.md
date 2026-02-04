@@ -352,7 +352,10 @@ updater.provider = new GitHubProvider({
 })
 ```
 
-Or use built-in `LocalDevProvider`
+Or use built-in `LocalDevProvider`:
+
+- download update json from `{baseDir}/{versionPath}`
+- download update asar from `{baseDir}/{name}-{version}.asar.gz`
 
 ```ts
 const provider = new LocalDevProvider({

@@ -348,7 +348,7 @@ export async function parseUpdaterOption(
       entryOutDir = 'dist-entry',
       electronDistPath = 'dist-electron',
       rendererDistPath = 'dist',
-      versionPath = 'version.json',
+      versionPath = 'release/version.json',
     } = {},
     keys: {
       privateKeyPath = 'keys/private.pem',

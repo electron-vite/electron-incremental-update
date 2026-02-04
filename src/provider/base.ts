@@ -1,4 +1,4 @@
-import type { DownloadingInfo, IProvider, UpdateInfoWithURL, UpdateJSONWithURL } from './types'
+import type { DownloadingInfo, IProvider, UpdateInfoWithURL, VersionJSON } from './types'
 
 import { defaultVerifySignature } from '../utils/crypto'
 import { defaultIsLowerVersion } from '../utils/version'
@@ -26,7 +26,7 @@ export abstract class BaseProvider implements IProvider {
     name: string,
     versionPath: string,
     signal: AbortSignal,
-  ): Promise<UpdateJSONWithURL>
+  ): Promise<VersionJSON>
 
   /**
    * @inheritdoc

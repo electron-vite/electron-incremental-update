@@ -2,12 +2,7 @@ import { app } from 'electron'
 import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 
-import type {
-  DownloadingInfo,
-  IProvider,
-  UpdateInfoWithURL,
-  UpdateJSONWithURL,
-} from '../provider/types'
+import type { DownloadingInfo, IProvider, UpdateInfoWithURL, VersionJSON } from '../provider/types'
 import type {
   Logger,
   UpdateInfoWithExtraVersion,
@@ -92,10 +87,7 @@ export class Updater<
    * if data is absent, download URL from provider and return it,
    * else if data is `UpdateJSON`, return it
    */
-  private async fetch(
-    format: 'json',
-    data?: UpdateJSONWithURL,
-  ): Promise<UpdateJSONWithURL | undefined>
+  private async fetch(format: 'json', data?: VersionJSON): Promise<VersionJSON | undefined>
   /**
    * This function is used to parse download data.
    *
@@ -105,7 +97,7 @@ export class Updater<
    * @param data download URL or update json or buffer
    */
   private async fetch(format: 'buffer', data?: Buffer): Promise<Buffer | undefined>
-  private async fetch(format: 'json' | 'buffer', data?: Buffer | UpdateJSONWithURL): Promise<any> {
+  private async fetch(format: 'json' | 'buffer', data?: Buffer | VersionJSON): Promise<any> {
     if (typeof data === 'object') {
       if (
         (format === 'json' && isUpdateJSON(data)) ||

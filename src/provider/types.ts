@@ -31,7 +31,7 @@ export interface DownloadingInfo {
   bps: number
 }
 
-export type UpdateJSONWithURL = UpdateInfoWithURL & { beta: UpdateInfoWithURL }
+export type VersionJSON = UpdateInfoWithURL & { beta: UpdateInfoWithURL }
 
 export interface IProvider {
   /**
@@ -44,11 +44,7 @@ export interface IProvider {
    * @param versionPath normalized version path in project
    * @param signal abort signal
    */
-  downloadJSON: (
-    name: string,
-    versionPath: string,
-    signal: AbortSignal,
-  ) => Promise<UpdateJSONWithURL>
+  downloadJSON: (name: string, versionPath: string, signal: AbortSignal) => Promise<VersionJSON>
   /**
    * Download update asar buffer
    * @param updateInfo existing update info

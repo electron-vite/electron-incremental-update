@@ -2,7 +2,7 @@ import type { Promisable } from '@subframe7536/type-utils'
 
 import { URL } from 'node:url'
 
-import type { DownloadingInfo, UpdateInfoWithURL, UpdateJSONWithURL, URLHandler } from '../types'
+import type { DownloadingInfo, UpdateInfoWithURL, VersionJSON, URLHandler } from '../types'
 
 import { defaultDownloadAsar, defaultDownloadUpdateJSON } from '../../utils/download'
 import { BaseProvider } from '../base'
@@ -63,7 +63,7 @@ export abstract class BaseGitHubProvider<
     name: string,
     versionPath: string,
     signal: AbortSignal,
-  ): Promise<UpdateJSONWithURL> {
+  ): Promise<VersionJSON> {
     const { beta, version, ...info } = await defaultDownloadUpdateJSON(
       await this.parseURL(await this.getVersionURL(versionPath, signal)),
       this.getHeaders('json'),

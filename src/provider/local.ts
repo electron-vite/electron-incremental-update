@@ -3,7 +3,7 @@ import type { Buffer } from 'node:buffer'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import type { DownloadingInfo, UpdateInfoWithURL, UpdateJSONWithURL } from './types'
+import type { DownloadingInfo, UpdateInfoWithURL, VersionJSON } from './types'
 
 import { isUpdateJSON } from '../utils'
 import { BaseProvider } from './base'
@@ -13,17 +13,12 @@ export interface LocalDevProviderOptions {
    * Base directory for update files
    */
   baseDir: string
-  /**
-   * App name (used for constructing file paths)
-   */
-  appName?: string
 }
 
 /**
  * Update Provider for local development
- * - check update from local file system
- * - download update json and get version and download url
- * - download update asar from local file system
+ * - download update json from `{baseDir}/{versionPath}`
+ * - download update asar from `{baseDir}/{name}-{version}.asar.gz`
  *
  * This provider is useful for testing updates during development without
  * needing to deploy to a remote server.
@@ -43,14 +38,15 @@ export class LocalDevProvider extends BaseProvider {
     name: string,
     versionPath: string,
     signal: AbortSignal,
-  ): Promise<UpdateJSONWithURL> {
+  ): Promise<VersionJSON> {
     signal.throwIfAborted()
 
-    const { beta, version, ...info } = await this.readJSON(versionPath)
+    const { beta, version, ...info } = await this.readJSON(
+      path.join(this.options.baseDir, versionPath),
+    )
 
-    const getAppName = this.options.appName || name
     const getURL = (ver: string): string =>
-      path.join(this.options.baseDir, `${getAppName}-${ver}.asar.gz`)
+      path.join(this.options.baseDir, `${name}-${ver}.asar.gz`)
 
     return {
       ...info,
