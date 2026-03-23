@@ -1,12 +1,11 @@
 import type { Buffer } from 'node:buffer'
-
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import type { DownloadingInfo, UpdateInfoWithURL, VersionJSON } from './types'
-
 import { isUpdateJSON } from '../utils'
+
 import { BaseProvider } from './base'
+import type { DownloadingInfo, UpdateInfoWithURL, VersionJSON } from './types'
 
 export interface LocalDevProviderOptions {
   /**

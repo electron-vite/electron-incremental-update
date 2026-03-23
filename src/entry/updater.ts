@@ -1,16 +1,9 @@
-import { app } from 'electron'
 import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 
-import type { DownloadingInfo, IProvider, UpdateInfoWithURL, VersionJSON } from '../provider/types'
-import type {
-  Logger,
-  UpdateInfoWithExtraVersion,
-  UpdaterErrorCode,
-  UpdaterOption,
-  UpdaterUnavailableCode,
-} from './types'
+import { app } from 'electron'
 
+import type { DownloadingInfo, IProvider, UpdateInfoWithURL, VersionJSON } from '../provider/types'
 import {
   getAppVersion,
   getEntryVersion,
@@ -19,6 +12,14 @@ import {
   restartApp,
 } from '../utils/electron'
 import { isUpdateJSON } from '../utils/version'
+
+import type {
+  Logger,
+  UpdateInfoWithExtraVersion,
+  UpdaterErrorCode,
+  UpdaterOption,
+  UpdaterUnavailableCode,
+} from './types'
 import { UpdaterError } from './types'
 
 /**

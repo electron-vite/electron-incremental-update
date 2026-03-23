@@ -1,12 +1,13 @@
-import { createPackage } from '@electron/asar'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import type { UpdateJSON } from '../../utils/version'
-import type { _BuildAsarOption, _BuildVersionOption } from '../option'
+import { createPackage } from '@electron/asar'
 
+import type { UpdateJSON } from '../../utils/version'
 import { isUpdateJSON } from '../../utils/version'
 import { log } from '../constant'
+import type { _BuildAsarOption, _BuildVersionOption } from '../option'
+
 import { readableSize } from './file'
 
 /**

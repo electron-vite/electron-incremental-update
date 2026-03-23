@@ -1,5 +1,4 @@
 import type { BaseGitHubProviderOptions } from './base'
-
 import { BaseGitHubProvider } from './base'
 
 export interface GitHubProviderOptions extends BaseGitHubProviderOptions {

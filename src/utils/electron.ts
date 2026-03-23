@@ -5,10 +5,9 @@ import type { BrowserWindow } from 'electron'
 import { app } from 'electron'
 
 // @ts-expect-error no type
-import devtoolJs from './devtools/js?inject'
-
-// @ts-expect-error no type
 import cssFont from './devtools/font.css?inline'
+// @ts-expect-error no type
+import devtoolJs from './devtools/js?inject'
 // @ts-expect-error no type
 import cssScrollbar from './devtools/scrollbar.css?inline'
 

@@ -1,12 +1,13 @@
-import type { Promisable } from '@subframe7536/type-utils'
-import type { Plugin } from 'vite'
-
 import fs from 'node:fs'
 import path from 'node:path'
+
+import type { Promisable } from '@subframe7536/type-utils'
+import type { Plugin } from 'vite'
 import { normalizePath } from 'vite'
 
 import { bytecodeId, bytecodeLog } from '../constant'
 import { readableSize } from '../utils/file'
+
 import { bytecodeModuleLoaderCode } from './code'
 import {
   bytecodeModuleLoader,

@@ -1,6 +1,6 @@
-import type { BaseGitHubProviderOptions } from './base'
-
 import { defaultDownloadText, resolveJson } from '../../utils/download'
+
+import type { BaseGitHubProviderOptions } from './base'
 import { BaseGitHubProvider } from './base'
 
 type ReleaseApiResult = {

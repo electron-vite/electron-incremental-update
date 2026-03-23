@@ -1,8 +1,7 @@
 import type { InlineConfig, UserConfig, UserConfigFn } from 'vite'
 
-import type { ElectronWithUpdaterOptions } from './option'
-
 import { electronWithUpdater } from './core'
+import type { ElectronWithUpdaterOptions } from './option'
 
 type MakeOptional<T, K extends keyof T> = Partial<Pick<T, K>> & Omit<T, K>
 

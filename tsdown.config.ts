@@ -1,4 +1,4 @@
-import { defineConfig } from 'tsdown'
+import { build, defineConfig } from 'tsdown'
 
 export default defineConfig([
   {
@@ -9,6 +9,9 @@ export default defineConfig([
     },
     format: ['esm', 'cjs'],
     dts: { oxc: true },
+    css: {
+      minify: true,
+    },
     deps: {
       onlyBundle: ['@subframe7536/type-utils'],
       neverBundle: ['electron'],
@@ -17,6 +20,31 @@ export default defineConfig([
       polyfillRequire: false,
     },
     exports: true,
+    plugins: [
+      {
+        name: 'inline-script',
+        load: {
+          order: 'pre',
+          async handler(id) {
+            if (!id.endsWith('?inject')) {
+              return
+            }
+
+            const result = await build({
+              entry: id.replace('?inject', ''),
+              clean: false,
+              config: false,
+              minify: true,
+              write: false,
+            })
+            const c = result[0].chunks[1]
+            if (c?.type === 'chunk') {
+              return `export default '${c.code.replace('export{};', '')}'`
+            }
+          },
+        },
+      },
+    ],
   },
   {
     entry: {

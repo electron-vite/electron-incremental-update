@@ -1,10 +1,12 @@
-import * as babel from '@babel/core'
-import { getPackageInfoSync } from 'local-pkg'
 import cp from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import * as babel from '@babel/core'
+import { getPackageInfoSync } from 'local-pkg'
+
 import { parseVersion } from '../../utils/version'
+
 import { bytecodeGeneratorScript } from './code'
 
 export const electronModule: {

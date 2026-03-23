@@ -13,7 +13,6 @@
         "allowArrowFunctions": true
       }
     ],
-    // "sort-keys": "error",
     "default-case-last": "error",
     "default-param-last": "error",
     "no-await-in-loop": "allow",
@@ -100,16 +99,18 @@
         "ts-check": false
       }
     ],
+    "typescript/no-unnecessary-type-arguments": "error",
+    "typescript/no-unnecessary-type-assertion": "error",
     "unicorn/no-useless-promise-resolve-reject": "error",
     "unicorn/no-unnecessary-await": "error",
     "unicorn/no-useless-fallback-in-spread": "error",
-    "unicorn/prefer-dom-node-dataset": "error",
-    "unicorn/prefer-dom-node-append": "error",
-    "unicorn/prefer-dom-node-remove": "error",
+    // "unicorn/prefer-dom-node-dataset": "error",
+    // "unicorn/prefer-dom-node-append": "error",
+    // "unicorn/prefer-dom-node-remove": "error",
     "unicorn/prefer-date-now": "error",
     "unicorn/prefer-blob-reading-methods": "error",
     "unicorn/no-typeof-undefined": "error",
-    "unicorn/no-new-array": "error",
+    "unicorn/no-new-array": "off",
     "unicorn/new-for-builtins": "error",
     "unicorn/prefer-node-protocol": "error",
     "import/no-cycle": [
@@ -119,10 +120,13 @@
       }
     ],
     "import/consistent-type-specifier-style": "error",
-    "import/sort-imports": "error",
+    "import/sort-imports": "off",
     "import/no-duplicates": "error",
     "import/no-import-assign": "error",
     "import/no-self-import": "error",
-    "import/no-named-export": "allow"
+    "import/no-named-export": "allow",
+    "import/first": "error",
+    "jsx-a11y/label-has-associated-control": "off",
+    "jsx-a11y/prefer-tag-over-role": "off"
   }
 }

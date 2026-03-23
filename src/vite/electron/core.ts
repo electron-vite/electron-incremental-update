@@ -1,6 +1,6 @@
 import type { StdioOptions, SpawnOptions } from 'node:child_process'
-import type { Plugin, ConfigEnv, UserConfig, LibraryOptions, InlineConfig } from 'vite'
 
+import type { Plugin, ConfigEnv, UserConfig, LibraryOptions, InlineConfig } from 'vite'
 import { build as viteBuild, version } from 'vite'
 
 import { resolveViteConfig, treeKillSync } from './utils'

@@ -1,12 +1,12 @@
-import type { Promisable } from '@subframe7536/type-utils'
-
-import { app, BrowserWindow } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import type { Logger, UpdaterOption } from './types'
+import type { Promisable } from '@subframe7536/type-utils'
+import { app, BrowserWindow } from 'electron'
 
 import { getPathFromAppNameAsar, isDev } from '../utils/electron'
+
+import type { Logger, UpdaterOption } from './types'
 import { Updater } from './updater'
 
 /**

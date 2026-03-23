@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { writeFileSync } from 'node:fs'
+
 import { build } from 'vite'
 
 import { bytecodePlugin } from '../src/vite/bytecode'

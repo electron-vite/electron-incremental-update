@@ -1,5 +1,15 @@
 {
   "semi": false,
   "singleQuote": true,
-  "experimentalSortImports": {}
+  "experimentalSortImports": {
+    "groups": [
+      ["side_effect"],
+      ["builtin"],
+      ["external", "type-external"],
+      ["internal", "type-internal"],
+      ["parent", "type-parent"],
+      ["sibling", "type-sibling"],
+      ["index", "type-index"]
+    ]
+  }
 }

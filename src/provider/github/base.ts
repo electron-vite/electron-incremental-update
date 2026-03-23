@@ -1,11 +1,10 @@
-import type { Promisable } from '@subframe7536/type-utils'
-
 import { URL } from 'node:url'
 
-import type { DownloadingInfo, UpdateInfoWithURL, VersionJSON, URLHandler } from '../types'
+import type { Promisable } from '@subframe7536/type-utils'
 
 import { defaultDownloadAsar, defaultDownloadUpdateJSON } from '../../utils/download'
 import { BaseProvider } from '../base'
+import type { DownloadingInfo, UpdateInfoWithURL, VersionJSON, URLHandler } from '../types'
 
 export interface BaseGitHubProviderOptions {
   /**

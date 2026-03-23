@@ -1,8 +1,8 @@
-import type { BuildEnvironmentOptions, InlineConfig, ResolvedConfig } from 'vite'
-
 import cp from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
+
+import type { BuildEnvironmentOptions, InlineConfig, ResolvedConfig } from 'vite'
 import { mergeConfig } from 'vite'
 
 import type { ElectronOptions } from './core'

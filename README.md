@@ -359,7 +359,7 @@ Or use built-in `LocalDevProvider`:
 
 ```ts
 const provider = new LocalDevProvider({
-  baseDir: process.pwd()
+  baseDir: process.pwd(),
 })
 ```
 

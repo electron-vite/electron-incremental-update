@@ -1,14 +1,14 @@
 import type { Promisable } from '@subframe7536/type-utils'
 
+import { defaultSignature } from '../utils/crypto'
 import type { UpdateJSON } from '../utils/version'
+import { defaultVersionJsonGenerator } from '../utils/version'
+import { defaultZipFile } from '../utils/zip'
+
 import type { BytecodeOptions } from './bytecode'
 import type { ElectronOptions } from './electron/core'
 import type { NotBundleOptions } from './electron/plugin'
 import type { DistinguishedName } from './utils/key'
-
-import { defaultSignature } from '../utils/crypto'
-import { defaultVersionJsonGenerator } from '../utils/version'
-import { defaultZipFile } from '../utils/zip'
 import { parseKeys } from './utils/key'
 
 export interface PKG {

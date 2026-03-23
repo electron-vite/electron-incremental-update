@@ -1,11 +1,10 @@
 import type { Arrayable } from '@subframe7536/type-utils'
 import type { ClientRequest, IncomingMessage } from 'electron'
-
 import { app, net } from 'electron'
 
 import type { DownloadingInfo } from '../provider/types'
-import type { UpdateJSON } from './version'
 
+import type { UpdateJSON } from './version'
 import { isUpdateJSON } from './version'
 
 /**
