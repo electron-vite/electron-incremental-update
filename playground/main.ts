@@ -1,14 +1,15 @@
 import { app, BrowserWindow } from 'electron'
 
-import { startupWithUpdater } from '../src/entry'
+import { startupWithUpdater } from '../dist/index.cjs'
 import {
+  beautifyDevTools,
   getAppVersion,
   getEntryVersion,
   getPathFromAppNameAsar,
   getPathFromPreload,
   loadPage,
   requireNative,
-} from '../src/utils'
+} from '../dist/utils.cjs'
 
 export default startupWithUpdater(() => {
   console.table({
@@ -29,5 +30,6 @@ export default startupWithUpdater(() => {
         webPreferences: { preload: getPathFromPreload('preload.js') },
       })
       loadPage(win)
+      beautifyDevTools(win, { mono: 'Maple Mono NF CN, Maple Mono', sans: 'Mapple, -apple-system' })
     })
 })

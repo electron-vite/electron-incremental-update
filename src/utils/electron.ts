@@ -1,8 +1,16 @@
-import type { BrowserWindow } from 'electron'
-
-import { app } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
+
+import type { BrowserWindow } from 'electron'
+import { app } from 'electron'
+
+// @ts-expect-error no type
+import devtoolJs from './devtools/js?inject'
+
+// @ts-expect-error no type
+import cssFont from './devtools/font.css?inline'
+// @ts-expect-error no type
+import cssScrollbar from './devtools/scrollbar.css?inline'
 
 /**
  * type only entry dir path, transformed by vite's define
@@ -182,10 +190,6 @@ export function loadPage(win: BrowserWindow, htmlFilePath = 'index.html'): void 
   }
 }
 
-declare const __FONT_CSS__: string
-declare const __SCROLLBAR_CSS__: string
-declare const __JS__: string
-
 interface BeautifyDevToolsOptions {
   /**
    * Sans-serif font family
@@ -211,12 +215,15 @@ export function beautifyDevTools(win: BrowserWindow, options: BeautifyDevToolsOp
   const { mono, sans, scrollbar = true } = options
   win.webContents.on('devtools-opened', async () => {
     // eslint-disable-next-line prefer-template
-    let css = `:root{--sans:${sans};--mono:${mono}}` + __FONT_CSS__
+    let css = `:root{--sans:${sans};--mono:${mono}}${cssFont}`
     if (scrollbar) {
-      css += __SCROLLBAR_CSS__
+      css += cssScrollbar
     }
-    const js = `const __CSS__='${css}';${__JS__}`
-    await win?.webContents.devToolsWebContents?.executeJavaScript(js)
+    // Reference from https://github.com/electron/electron/issues/42055#issuecomment-2449365647
+    const js = `const __CSS__=\`${css}\`;${devtoolJs}`
+    await win?.webContents.devToolsWebContents
+      ?.executeJavaScript(js)
+      .catch((e) => console.log(`Failed to execute js: ${js}.\n`, e))
   })
 }
 /**
