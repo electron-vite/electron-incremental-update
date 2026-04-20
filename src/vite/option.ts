@@ -6,8 +6,8 @@ import { defaultVersionJsonGenerator } from '../utils/version'
 import { defaultZipFile } from '../utils/zip'
 
 import type { BytecodeOptions } from './bytecode'
-import type { ElectronOptions } from './electron/core'
-import type { NotBundleOptions } from './electron/plugin'
+import type { ElectronOptions } from './electron-next'
+import type { NotBundleOptions } from './electron-next/plugin'
 import type { DistinguishedName } from './utils/key'
 import { parseKeys } from './utils/key'
 
@@ -98,10 +98,6 @@ export interface ElectronWithUpdaterOptions {
    * external `dependencies` in `package.json` by default
    */
   external?: (string | RegExp)[] | boolean
-  /**
-   * Build entry/main/preload in parallel, make build faster.
-   */
-  parallel?: boolean
   /**
    * Options for entry (app.asar)
    *

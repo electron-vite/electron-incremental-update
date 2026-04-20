@@ -22,7 +22,6 @@ This project offers a lightweight update solution for Electron applications with
     - [Use Native Modules](#use-native-modules)
       - [Example](#example)
       - [Result in app.asar](#result-in-appasar)
-    - [Parallel Build](#parallel-build)
     - [NotBundle](#notbundle)
     - [Bytecode Protection](#bytecode-protection)
       - [Benefits](#benefits)
@@ -538,17 +537,6 @@ After: Clean 😍
 │   ├── image.js
 │   └── image.win32-x64-msvc.node
 └── package.json
-```
-
-### Parallel Build
-
-Build entry/main/preload in parallel, make build faster.
-
-```ts
-electronWithUpdater({
-  // ...
-  parallel: true,
-})
 ```
 
 ### NotBundle

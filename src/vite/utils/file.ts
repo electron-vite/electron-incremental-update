@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 
 import { log } from '../constant'
-import type { ElectronOptions } from '../electron/core'
+import type { ElectronOptions } from '../electron-next'
 
 /**
  * Convert byte size to human-readable format
