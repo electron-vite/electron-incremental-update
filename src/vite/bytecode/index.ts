@@ -89,7 +89,7 @@ export function bytecodePlugin(
       if (hasJsChunks) {
         this.emitFile({
           type: 'asset',
-          source: bytecodeModuleLoaderCode + '\n',
+          source: `${bytecodeModuleLoaderCode}\n`,
           name: 'Bytecode Loader',
           fileName: bytecodeModuleLoader,
         })
@@ -133,7 +133,7 @@ export function bytecodePlugin(
           // 3. Compile to bytecode (critical path)
           const bytecode = await compileToBytecode(code, absPath, electronPath)
           if (typeof bytecode === 'string') {
-            throw new Error(bytecode)
+            throw new TypeError(bytecode)
           }
 
           // 4. Write bytecode file (.jsc)
@@ -176,7 +176,7 @@ export function bytecodePlugin(
 
       // Format each line with colors and alignment (O(n))
       const logs = relativeFiles.map((f) => {
-        const dirDisplay = f.dir === '.' ? '' : `${styleText('dim', f.dir + '/')}`
+        const dirDisplay = f.dir === '.' ? '' : `${styleText('dim', `${f.dir}/`)}`
         const baseDisplay = styleText('magenta', f.base)
         const sizeDisplay = styleText(['dim', 'bold'], readableSize(f.size))
 

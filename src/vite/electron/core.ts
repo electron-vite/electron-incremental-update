@@ -4,6 +4,68 @@ import type { Plugin, ConfigEnv, UserConfig, LibraryOptions, InlineConfig } from
 import { build as viteBuild, version } from 'vite'
 
 import { resolveViteConfig, treeKillSync } from './utils'
+interface StartupFn {
+  (argv?: string[], options?: SpawnOptions, customElectronPkg?: string): Promise<void>
+  send: (message: string) => void
+  hookedProcessExit: boolean
+  exit: () => Promise<void>
+}
+
+/**
+ * Electron App startup function.
+ * It will mount the Electron App child-process to `process.electronApp`.
+ * @param argv default value `['.', '--no-sandbox']`
+ * @param options options for `child_process.spawn`
+ * @param customElectronPkg custom electron package name (default: 'electron')
+ */
+export const startup: StartupFn = async (
+  argv = ['.', '--no-sandbox'],
+  options?,
+  customElectronPkg?,
+) => {
+  const { spawn } = await import('node:child_process')
+  const electron = await import(customElectronPkg ?? 'electron')
+  const electronPath = electron.default ?? electron
+
+  await startup.exit()
+
+  // Start Electron.app
+  const stdio: StdioOptions =
+    process.platform === 'linux'
+      ? // reserve file descriptor 3 for Chromium; put Node IPC on file descriptor 4
+        ['inherit', 'inherit', 'inherit', 'ignore', 'ipc']
+      : ['inherit', 'inherit', 'inherit', 'ipc']
+  process.electronApp = spawn(electronPath, argv, {
+    stdio,
+    ...options,
+  })
+
+  // Exit command after Electron.app exits
+  process.electronApp.once('exit', process.exit)
+
+  if (!startup.hookedProcessExit) {
+    startup.hookedProcessExit = true
+    process.once('exit', startup.exit)
+  }
+}
+
+startup.send = (message: string) => {
+  if (process.electronApp) {
+    // Based on { stdio: [,,, 'ipc'] }
+    process.electronApp.send?.(message)
+  }
+}
+
+startup.hookedProcessExit = false
+startup.exit = async () => {
+  if (process.electronApp) {
+    await new Promise((resolve) => {
+      process.electronApp.removeAllListeners()
+      process.electronApp.once('exit', resolve)
+      treeKillSync(process.electronApp.pid!)
+    })
+  }
+}
 
 export interface ElectronOptions {
   /**
@@ -157,67 +219,4 @@ export default function electron(
       },
     },
   ]
-}
-
-interface StartupFn {
-  (argv?: string[], options?: SpawnOptions, customElectronPkg?: string): Promise<void>
-  send: (message: string) => void
-  hookedProcessExit: boolean
-  exit: () => Promise<void>
-}
-
-/**
- * Electron App startup function.
- * It will mount the Electron App child-process to `process.electronApp`.
- * @param argv default value `['.', '--no-sandbox']`
- * @param options options for `child_process.spawn`
- * @param customElectronPkg custom electron package name (default: 'electron')
- */
-export const startup: StartupFn = async (
-  argv = ['.', '--no-sandbox'],
-  options?,
-  customElectronPkg?,
-) => {
-  const { spawn } = await import('node:child_process')
-  const electron = await import(customElectronPkg ?? 'electron')
-  const electronPath = electron.default ?? electron
-
-  await startup.exit()
-
-  // Start Electron.app
-  const stdio: StdioOptions =
-    process.platform === 'linux'
-      ? // reserve file descriptor 3 for Chromium; put Node IPC on file descriptor 4
-        ['inherit', 'inherit', 'inherit', 'ignore', 'ipc']
-      : ['inherit', 'inherit', 'inherit', 'ipc']
-  process.electronApp = spawn(electronPath, argv, {
-    stdio,
-    ...options,
-  })
-
-  // Exit command after Electron.app exits
-  process.electronApp.once('exit', process.exit)
-
-  if (!startup.hookedProcessExit) {
-    startup.hookedProcessExit = true
-    process.once('exit', startup.exit)
-  }
-}
-
-startup.send = (message: string) => {
-  if (process.electronApp) {
-    // Based on { stdio: [,,, 'ipc'] }
-    process.electronApp.send?.(message)
-  }
-}
-
-startup.hookedProcessExit = false
-startup.exit = async () => {
-  if (process.electronApp) {
-    await new Promise((resolve) => {
-      process.electronApp.removeAllListeners()
-      process.electronApp.once('exit', resolve)
-      treeKillSync(process.electronApp.pid!)
-    })
-  }
 }

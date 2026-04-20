@@ -35,7 +35,7 @@ declare const __EIU_IS_ESM__: string
  * @default install(); logger.info('update success!')
  */
 type OnInstallFunction = (
-  install: VoidFunction,
+  install: () => void,
   tempAsarPath: string,
   appNameAsarPath: string,
   logger?: Logger,
@@ -162,7 +162,7 @@ export async function createElectronApp(appOptions: AppOption = {}): Promise<voi
     if (__EIU_IS_ESM__) {
       runWithDefaultExport(await import(`file://${mainPath}`), updaterInstance)
     } else {
-      // oxlint-disable-next-line typescript/no-var-requires
+      // oxlint-disable-next-line typescript/no-require-imports
       runWithDefaultExport(require(mainPath), updaterInstance)
     }
   } catch (error) {

@@ -22,7 +22,7 @@ function getMainFileBaseName(options: ElectronWithUpdaterOptions['main']['files'
   if (typeof options === 'string') {
     mainFilePath = path.basename(options)
   } else if (Array.isArray(options)) {
-    mainFilePath = path.basename(options[0])
+    mainFilePath = path.basename(options[0]!)
   } else {
     const name = options?.index ?? options?.main
     if (!name) {

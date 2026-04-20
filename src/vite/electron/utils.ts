@@ -79,7 +79,7 @@ export function resolveInput(
  */
 export async function mockIndexHtml(
   config: ResolvedConfig,
-): Promise<{ remove(): Promise<void>; filepath: string; distpath: string }> {
+): Promise<{ remove: () => Promise<void>; filepath: string; distpath: string }> {
   const { root, build } = config
   const output = path.resolve(root, build.outDir)
   const content = `

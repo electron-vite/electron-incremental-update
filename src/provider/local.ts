@@ -24,7 +24,7 @@ export interface LocalDevProviderOptions {
  * @param options provider options
  */
 export class LocalDevProvider extends BaseProvider {
-  public name = 'LocalDevProvider'
+  public override name = 'LocalDevProvider'
 
   constructor(private options: LocalDevProviderOptions) {
     super()

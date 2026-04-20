@@ -77,7 +77,7 @@ export function requireNative<T = any>(moduleName: string): T {
       `Cannot require "${m}", \`requireNative\` only support CommonJS, use \`importNative\` instead`,
     )
   }
-  // oxlint-disable-next-line typescript/no-var-requires
+  // oxlint-disable-next-line typescript/no-require-imports
   return require(m)
 }
 
@@ -121,7 +121,7 @@ export function setAppUserModelId(id?: string): void {
  * Only support CommonJS
  */
 export function disableHWAccForWin7(): void {
-  // oxlint-disable-next-line typescript/no-var-requires
+  // oxlint-disable-next-line typescript/no-require-imports
   if (!__EIU_IS_ESM__ && require('node:os').release().startsWith('6.1')) {
     app.disableHardwareAcceleration()
   }

@@ -26,7 +26,7 @@ export interface GitHubApiProviderOptions extends BaseGitHubProviderOptions {
  * @param options provider options
  */
 export class GitHubApiProvider extends BaseGitHubProvider<GitHubApiProviderOptions> {
-  public name = 'GithubApiProvider'
+  public override name = 'GithubApiProvider'
 
   protected getHeaders(accept: string): Record<string, string> {
     return {

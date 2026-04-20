@@ -57,7 +57,7 @@ export function defaultVerifySignature(
     if (ver !== version) {
       return false
     }
-    return crypto.createVerify('RSA-SHA256').update(buffer).verify(cert, sig, 'base64')
+    return crypto.createVerify('RSA-SHA256').update(buffer).verify(cert, sig!, 'base64')
   } catch {
     return false
   }

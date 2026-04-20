@@ -40,7 +40,7 @@ export function parseVersion(version: string): Version {
   }
   if (match[4]) {
     let [stage, _v] = match[4].split('.')
-    ret.stage = stage
+    ret.stage = stage!
     ret.stageVersion = Number(_v) || -1
   }
   if (
@@ -51,7 +51,7 @@ export function parseVersion(version: string): Version {
   ) {
     throw new TypeError(`Invalid version: ${version}`)
   }
-  return ret
+  return ret as Version
 }
 
 function compareStrings(str1: string, str2: string): boolean {

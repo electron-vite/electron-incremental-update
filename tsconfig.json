@@ -1,4 +1,7 @@
 {
-  "extends": "@subframe7536/type-utils/tsconfig.json",
+  "extends": "@subf/config/tsconfig-lib",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"]
+  },
   "include": ["src", "tests", "playground", "vite.config.ts"]
 }

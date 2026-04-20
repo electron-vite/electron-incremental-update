@@ -12,7 +12,7 @@ import { BaseGitHubProvider } from './base'
  * @param options provider options
  */
 export class GitHubAtomProvider extends BaseGitHubProvider {
-  public name = 'GithubAtomProvider'
+  public override name = 'GithubAtomProvider'
 
   protected getHeaders(accept: string): Record<string, string> {
     return { Accept: `application/${accept}`, ...this.options.extraHeaders }
