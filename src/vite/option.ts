@@ -1,6 +1,5 @@
-import type { Promisable } from '@subframe7536/type-utils'
-
 import { defaultSignature } from '../utils/crypto'
+import type { Promisable } from '../utils/type'
 import type { UpdateJSON } from '../utils/version'
 import { defaultVersionJsonGenerator } from '../utils/version'
 import { defaultZipFile } from '../utils/zip'

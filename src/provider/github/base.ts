@@ -1,8 +1,7 @@
 import { URL } from 'node:url'
 
-import type { Promisable } from '@subframe7536/type-utils'
-
 import { defaultDownloadAsar, defaultDownloadUpdateJSON } from '../../utils/download'
+import type { Promisable } from '../../utils/type'
 import { BaseProvider } from '../base'
 import type { DownloadingInfo, UpdateInfoWithURL, VersionJSON, URLHandler } from '../types'
 

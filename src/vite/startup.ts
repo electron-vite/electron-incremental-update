@@ -1,6 +1,6 @@
 import type { StdioOptions } from 'node:child_process'
 
-import type { AnyFunction } from '@subframe7536/type-utils'
+import type { AnyFunction } from '../utils/type'
 
 import type { ElectronOptions } from './electron-next'
 

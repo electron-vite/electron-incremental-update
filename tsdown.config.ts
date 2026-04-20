@@ -13,8 +13,7 @@ export default defineConfig([
       minify: true,
     },
     deps: {
-      onlyBundle: ['@subframe7536/type-utils'],
-      neverBundle: ['electron'],
+      skipNodeModulesBundle: true,
     },
     outputOptions: {
       polyfillRequire: false,
@@ -54,8 +53,7 @@ export default defineConfig([
     dts: { oxc: true },
     exports: true,
     deps: {
-      onlyBundle: ['@subframe7536/type-utils'],
-      neverBundle: ['electron', 'vite'],
+      skipNodeModulesBundle: true,
     },
   },
 ])

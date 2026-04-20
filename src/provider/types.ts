@@ -1,5 +1,4 @@
-import type { Promisable } from '@subframe7536/type-utils'
-
+import type { Promisable } from '../utils/type'
 import type { UpdateInfo } from '../utils/version'
 
 export type UpdateInfoWithURL = UpdateInfo & { url: string }

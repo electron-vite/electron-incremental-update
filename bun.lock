@@ -13,7 +13,6 @@
       },
       "devDependencies": {
         "@subf/config": "^0.2.1",
-        "@subframe7536/type-utils": "^0.2.0",
         "@tsdown/css": "^0.21.9",
         "@types/babel__core": "^7.20.5",
         "@types/bun": "^1.3.12",
@@ -30,9 +29,6 @@
         "@electron/asar": "4.2.0",
       },
     },
-  },
-  "overrides": {
-    "vite": "^8.0.0-beta.9",
   },
   "packages": {
     "@babel/code-frame": ["@babel/code-frame@7.28.6", "https://registry.npmmirror.com/@babel/code-frame/-/code-frame-7.28.6.tgz", { "dependencies": { "@babel/helper-validator-identifier": "^7.28.5", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-JYgintcMjRiCvS8mMECzaEn+m3PfoQiyqukOMCCVQtoJGYJw8j/8LBJEiqkHLkfwCcs74E3pbAUFNg7d9VNJ+Q=="],
@@ -242,8 +238,6 @@
     "@subf/config": ["@subf/config@0.2.1", "https://registry.npmmirror.com/@subf/config/-/config-0.2.1.tgz", { "dependencies": { "@subf/oxlint-plugin": "^0.2.2" }, "peerDependencies": { "defu": "*" }, "bin": { "subf": "bin/subf.js" } }, "sha512-/Kpk+cWBEJJ8j7BDr2e8U1t5axlVgMrPzzH5jUUfdjxaCyQIC0gSneusVOctT1XPnh5zN6EV+7QnL9AuiPGc6A=="],
 
     "@subf/oxlint-plugin": ["@subf/oxlint-plugin@0.2.2", "https://registry.npmmirror.com/@subf/oxlint-plugin/-/oxlint-plugin-0.2.2.tgz", {}, "sha512-e2v+0TRtDK1jX11dSNTOqnFc2n3Hln2TYA2w/JuExzRhZBIyCVNj5qRCGWN3spOVfefGv4NPzqjo8Ag+0Ycs7A=="],
-
-    "@subframe7536/type-utils": ["@subframe7536/type-utils@0.2.0", "https://registry.npmmirror.com/@subframe7536/type-utils/-/type-utils-0.2.0.tgz", {}, "sha512-5OmY4NfRPBVcsVReZLU1sh7bZppZUWFnnN2ybjOQS7i2suOR1ds3qsFJmZNLpWV5gLmL0RVAmHgMQU0salMJOw=="],
 
     "@szmarczak/http-timer": ["@szmarczak/http-timer@4.0.6", "https://registry.npmmirror.com/@szmarczak/http-timer/-/http-timer-4.0.6.tgz", { "dependencies": { "defer-to-connect": "^2.0.0" } }, "sha512-4BAffykYOgO+5nzBWYwE3W90sBgLJoUPRWWcL8wlyiM8IB8ipJz3UMJ9KXQd1RKQXpKp8Tutn80HZtWsu2u76w=="],
 

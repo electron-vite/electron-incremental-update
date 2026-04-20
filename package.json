@@ -15,13 +15,7 @@
     "url": "git+https://github.com/subframe7536/electron-incremental-update.git"
   },
   "files": [
-    "dist",
-    "provider.d.ts",
-    "provider.js",
-    "utils.d.ts",
-    "utils.js",
-    "vite.d.ts",
-    "vite.js"
+    "dist"
   ],
   "type": "module",
   "main": "./dist/index.cjs",
@@ -78,7 +72,6 @@
   },
   "devDependencies": {
     "@subf/config": "^0.2.1",
-    "@subframe7536/type-utils": "^0.2.0",
     "@tsdown/css": "^0.21.9",
     "@types/babel__core": "^7.20.5",
     "@types/bun": "^1.3.12",
@@ -93,11 +86,5 @@
   "peerDependencies": {
     "@babel/core": "^7.29.0",
     "@electron/asar": "4.2.0"
-  },
-  "overrides": {
-    "vite": "^8.0.0-beta.9"
-  },
-  "inlinedDependencies": {
-    "@subframe7536/type-utils": "0.2.0"
   }
 }

@@ -1,10 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import type { Promisable } from '@subframe7536/type-utils'
 import type { Plugin } from 'vite'
 import { normalizePath } from 'vite'
 
+import type { Promisable } from '../../utils/type'
 import { bytecodeId, bytecodeLog } from '../constant'
 import { readableSize } from '../utils/file'
 
