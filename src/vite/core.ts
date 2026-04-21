@@ -241,6 +241,7 @@ export async function electronWithUpdater(
   // Build main configuration (same as before)
   const _electronOptions: ElectronOptions[] = [
     {
+      name: 'main',
       entry: _main.files,
       onstart: _main.onstart,
       vite: mergeConfig(
@@ -275,6 +276,7 @@ export async function electronWithUpdater(
   // Build preload configuration
   if (_preload?.files) {
     _electronOptions.push({
+      name: 'preload',
       onstart(args) {
         // Notify the Renderer-Process to reload the page when the Preload-Scripts build is complete
         args.reload()
@@ -311,6 +313,7 @@ export async function electronWithUpdater(
   }
 
   _electronOptions.push({
+    name: 'entry',
     entry: _entry.files,
     async onstart(args) {
       await args.startup()
