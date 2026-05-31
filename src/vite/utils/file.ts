@@ -1,7 +1,8 @@
 import fs from 'node:fs'
 
+import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
+
 import { log } from '../constant'
-import type { ElectronOptions } from '../electron-next'
 
 /**
  * Convert byte size to human-readable format
@@ -41,7 +42,7 @@ export function copyAndSkipIfExist(from: string, to: string, skipIfExist: boolea
  * @param files - Entry files in various formats
  * @returns Array of file paths
  */
-export function resolveInputToArray(files: NonNullable<ElectronOptions['entry']>) {
+export function resolveInputToArray(files: NonNullable<MultiEnvElectronOptions['input']>) {
   if (typeof files === 'string') {
     return [files]
   }
