@@ -6,13 +6,13 @@ import { isCI } from 'ci-info'
 import { loadPackageJSON } from 'local-pkg'
 import type { InlineConfig, PluginOption } from 'vite'
 import { mergeConfig, normalizePath } from 'vite'
+import electron from 'vite-plugin-electron/multi-env'
+import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
+import { notBundle, esmShim } from 'vite-plugin-electron/plugin'
 
 import { bytecodePlugin } from './bytecode'
 import type { BytecodeOptions } from './bytecode'
 import { id, log } from './constant'
-import type { ElectronOptions } from './electron-next'
-import electron from './electron-next'
-import { notBundle } from './electron-next/plugin'
 import type { ElectronWithUpdaterOptions, PKG } from './option'
 import { parseUpdaterOption } from './option'
 import { buildAsar, buildUpdateJson } from './utils/build'
@@ -239,19 +239,19 @@ export async function electronWithUpdater(
   } = await resolveCachedOptions(options)
 
   // Build main configuration (same as before)
-  const _electronOptions: ElectronOptions[] = [
+  const _electronOptions: MultiEnvElectronOptions[] = [
     {
       name: 'main',
-      entry: _main.files,
+      input: _main.files,
       onstart: _main.onstart,
-      vite: mergeConfig(
+      plugins: [
+        !isESM && esmShim(),
+        notBundleOption &&
+          notBundle(typeof notBundleOption === 'object' ? notBundleOption : undefined),
+        bytecodeOptions && bytecodePlugin('main', minify, isESM, bytecodeOptions),
+      ],
+      options: mergeConfig(
         {
-          plugins: [
-            !isBuild &&
-              notBundleOption &&
-              notBundle(typeof notBundleOption === 'object' ? notBundleOption : undefined),
-            bytecodeOptions && bytecodePlugin('main', minify, isESM, bytecodeOptions),
-          ],
           build: {
             sourcemap,
             minify,
@@ -268,7 +268,7 @@ export async function electronWithUpdater(
           },
           define,
         } satisfies InlineConfig,
-        _main.vite ?? {},
+        _main.options ?? {},
       ),
     },
   ]
@@ -281,18 +281,22 @@ export async function electronWithUpdater(
         // Notify the Renderer-Process to reload the page when the Preload-Scripts build is complete
         args.reload()
       },
-      vite: mergeConfig(
+      input: _preload.files,
+      plugins: [
+        !isESM && esmShim(),
+        notBundleOption &&
+          notBundle(typeof notBundleOption === 'object' ? notBundleOption : undefined),
+        bytecodeOptions && bytecodePlugin('preload', minify, isESM, bytecodeOptions),
+      ],
+      options: mergeConfig(
         {
-          plugins: [bytecodeOptions && bytecodePlugin('preload', minify, isESM, bytecodeOptions)],
           build: {
             sourcemap: sourcemap ? 'inline' : undefined,
             minify,
             outDir: `${buildAsarOption.electronDistPath}/preload`,
             rolldownOptions: {
               external: finalExternal,
-              input: _preload.files,
               output: {
-                minify: { codegen: { removeWhitespace: true } },
                 // preload should use cjs format and not split
                 format: 'cjs',
                 codeSplitting: false,
@@ -307,23 +311,23 @@ export async function electronWithUpdater(
           },
           define,
         } satisfies InlineConfig,
-        _preload?.vite ?? {},
+        _preload?.options ?? {},
       ),
     })
   }
 
   _electronOptions.push({
     name: 'entry',
-    entry: _entry.files,
+    input: _entry.files,
     async onstart(args) {
       await args.startup()
     },
-    vite: mergeConfig<InlineConfig, InlineConfig>(
+    options: mergeConfig<InlineConfig, InlineConfig>(
       {
         plugins: [
+          !isESM && esmShim(),
           bytecodeOptions && bytecodePlugin('entry', minify, isESM, bytecodeOptions),
-          !isBuild &&
-            notBundleOption &&
+          notBundleOption &&
             notBundle(typeof notBundleOption === 'object' ? notBundleOption : undefined),
           {
             name: `${id}:entry`,
@@ -374,16 +378,11 @@ export async function electronWithUpdater(
           outDir: entryOutDir,
           rolldownOptions: {
             external: finalExternal,
-            platform: 'node',
-            output: {
-              minify: { codegen: { removeWhitespace: true } },
-              polyfillRequire: false,
-            },
           },
         },
         define,
       },
-      _entry.vite || {},
+      _entry.options || {},
     ),
   })
 

@@ -1,10 +1,10 @@
 import type { StdioOptions } from 'node:child_process'
 
+import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
+
 import type { AnyFunction } from '../utils/type'
 
-import type { ElectronOptions } from './electron-next'
-
-type StartupFn = NonNullable<ElectronOptions['onstart']>
+type StartupFn = NonNullable<MultiEnvElectronOptions['onstart']>
 
 /**
  * Debug mode startup function

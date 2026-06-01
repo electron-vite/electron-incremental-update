@@ -1,3 +1,6 @@
+import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
+import type { NotBundleOptions } from 'vite-plugin-electron/plugin'
+
 import { defaultSignature } from '../utils/crypto'
 import type { Promisable } from '../utils/type'
 import type { UpdateJSON } from '../utils/version'
@@ -5,8 +8,6 @@ import { defaultVersionJsonGenerator } from '../utils/version'
 import { defaultZipFile } from '../utils/zip'
 
 import type { BytecodeOptions } from './bytecode'
-import type { ElectronOptions } from './electron-next'
-import type { NotBundleOptions } from './electron-next/plugin'
 import type { DistinguishedName } from './utils/key'
 import { parseKeys } from './utils/key'
 
@@ -22,11 +23,11 @@ interface CommonBuildOption {
   /**
    * Shortcut of `build.rolldownOptions.input`
    */
-  files: NonNullable<ElectronOptions['entry']>
+  files: NonNullable<MultiEnvElectronOptions['input']>
   /**
    * Override vite options
    */
-  vite?: ElectronOptions['vite'] & {
+  options?: MultiEnvElectronOptions['options'] & {
     build?: {
       outDir: never
       sourcemap: never
@@ -166,7 +167,7 @@ export interface ElectronWithUpdaterOptions {
      * @param options options for `child_process.spawn`
      * @param customElectronPkg custom electron package name (default: 'electron')
      */
-    onstart?: ElectronOptions['onstart']
+    onstart?: MultiEnvElectronOptions['onstart']
   } & CommonBuildOption
   /**
    * Preload process options
