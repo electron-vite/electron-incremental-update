@@ -1,38 +1,11 @@
-import type { StdioOptions } from 'node:child_process'
-
-import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
-
 import type { AnyFunction } from '../utils/type'
-
-type StartupFn = NonNullable<MultiEnvElectronOptions['onstart']>
-
-/**
- * Debug mode startup function
- * Automatically starts Electron in VSCode debug mode
- * @param args - Startup arguments
- */
-export async function debugStartup(args: Parameters<StartupFn>[0]): Promise<void> {
-  if (process.env.VSCODE_DEBUG) {
-    console.log('[startup] Electron App')
-  } else {
-    await args.startup()
-  }
-}
 
 /**
  * Filter error messages from stdout/stderr during startup
  * @param args - Startup arguments
  * @param filter - Filter function to determine which messages to show
  */
-export async function filterErrorMessageStartup(
-  args: Parameters<StartupFn>[0],
-  filter: (msg: string) => boolean,
-): Promise<void> {
-  const stdio: StdioOptions =
-    process.platform === 'linux'
-      ? ['inherit', 'pipe', 'pipe', 'ignore', 'ipc']
-      : ['inherit', 'pipe', 'pipe', 'ipc']
-  await args.startup(undefined, { stdio })
+export async function filterErrorMessageStartup(filter: (msg: string) => boolean): Promise<void> {
   const elec = process.electronApp
   elec.stdout?.addListener('data', (data: Buffer) => {
     console.log(data.toString().trimEnd())

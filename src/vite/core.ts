@@ -181,7 +181,7 @@ async function resolveCachedOptions(
  * @example
  * ```ts
  * import { defineConfig } from 'vite'
- * import { debugStartup, electronWithUpdater } from 'electron-incremental-update/vite'
+ * import { electronWithUpdater } from 'electron-incremental-update/vite'
  *
  * export default defineConfig(async ({ command }) => {
  *   const isBuild = command === 'build'
@@ -191,8 +191,6 @@ async function resolveCachedOptions(
  *         isBuild,
  *         main: {
  *           files: ['./electron/main/index.ts', './electron/main/worker.ts'],
- *           // see https://github.com/electron-vite/electron-vite-vue/blob/85ed267c4851bf59f32888d766c0071661d4b94c/vite.config.ts#L22-L28
- *           onstart: debugStartup,
  *         },
  *         preload: {
  *           files: './electron/preload/index.ts',

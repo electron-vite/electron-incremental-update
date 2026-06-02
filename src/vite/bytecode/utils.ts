@@ -60,7 +60,7 @@ export function compileToBytecode(
   const bytecodePath = getBytecodeCompilerPath()
   return new Promise<Buffer>((resolve, reject) => {
     const proc = cp.spawn(electronPath, [bytecodePath], {
-      env: { ELECTRON_RUN_AS_NODE: '1' } as any,
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
       stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
     })
 

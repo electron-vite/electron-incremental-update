@@ -1,7 +1,8 @@
 {
   "extends": "@subf/config/tsconfig-lib",
   "compilerOptions": {
-    "lib": ["ESNext", "DOM"]
+    "lib": ["ESNext", "DOM"],
+    "types": ["bun"]
   },
   "include": ["src", "tests", "playground", "vite.config.ts"]
 }

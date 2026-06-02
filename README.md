@@ -136,7 +136,7 @@ See all config in [types](#plugin)
 in `vite.config.mts`
 
 ```ts
-import { debugStartup, electronWithUpdater } from 'electron-incremental-update/vite'
+import { electronWithUpdater } from 'electron-incremental-update/vite'
 import { defineConfig } from 'vite'
 
 export default defineConfig(async ({ command }) => {
@@ -150,8 +150,6 @@ export default defineConfig(async ({ command }) => {
         },
         main: {
           files: ['./electron/main/index.ts', './electron/main/worker.ts'],
-          // see https://github.com/electron-vite/electron-vite-vue/blob/85ed267c4851bf59f32888d766c0071661d4b94c/vite.config.ts#L22-L28
-          onstart: debugStartup,
         },
         preload: {
           files: './electron/preload/index.ts',
@@ -185,8 +183,6 @@ export default defineElectronConfig({
   },
   main: {
     files: ['./electron/main/index.ts', './electron/main/worker.ts'],
-    // see https://github.com/electron-vite/electron-vite-vue/blob/85ed267c4851bf59f32888d766c0071661d4b94c/vite.config.ts#L22-L28
-    onstart: debugStartup,
   },
   preload: {
     files: './electron/preload/index.ts',
