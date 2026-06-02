@@ -35,9 +35,9 @@ This project offers a lightweight update solution for Electron applications with
 
 ## Key Features
 
-This solution provides a comprehensive update system for Electron applications, including:
+This solution provides a comprehensive update system for Electron applications. From v3 onward, the Vite plugin layer uses vite-plugin-electron v1 multi-env and the Vite environment API, while keeping the update workflow simple and explicit:
 
-- **Vite Plugin** - Seamlessly integrates with your existing Vite build process
+- **Vite Plugin** - Seamlessly integrates with your existing Vite build process via Environment API
 - **Startup Entry Function** - Handles application initialization and update checking
 - **Updater Class** - Manages the complete update workflow with event-driven API
 - **Utility Functions** - Helper functions for file paths, version management, and more
@@ -100,7 +100,7 @@ src
 
 The entry is used to load the application and initialize the `Updater`
 
-`Updater` use the `provider` to check and download the update. The built-in `GithubProvider` is based on `BaseProvider`, which implements the [`IProvider`](./src/provider/types.ts) interface. And the `provider` is optional, you can setup it later.
+`Updater` uses the `provider` to check and download the update. The built-in `GitHubProvider` is based on `BaseProvider`, which implements the [`IProvider`](./src/provider/types.ts) interface. The provider is optional, so you can set it later.
 
 in `electron/entry.ts`
 
@@ -112,7 +112,7 @@ createElectronApp({
   updater: {
     // optional, you can setup later
     provider: new GitHubProvider({
-      username: 'yourname',
+      user: 'yourname',
       repo: 'electron',
     }),
   },
@@ -336,7 +336,7 @@ You can also change the provider dynamically:
 ```ts
 // In main.ts
 updater.provider = new GitHubProvider({
-  owner: 'your-username',
+  user: 'your-username',
   repo: 'your-repo',
   // Custom URL handling for mirrors or private repos
   urlHandler: (url) => {
@@ -354,7 +354,7 @@ Or use built-in `LocalDevProvider`:
 
 ```ts
 const provider = new LocalDevProvider({
-  baseDir: process.pwd(),
+  baseDir: process.cwd(),
 })
 ```
 
