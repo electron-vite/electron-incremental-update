@@ -40,9 +40,7 @@ export class LocalDevProvider extends BaseProvider {
   ): Promise<VersionJSON> {
     signal.throwIfAborted()
 
-    const { beta, version, ...info } = await this.readJSON(
-      path.join(this.options.baseDir, versionPath),
-    )
+    const { beta, version, ...info } = await this.readJSON(versionPath)
 
     const getURL = (ver: string): string =>
       path.join(this.options.baseDir, `${name}-${ver}.asar.gz`)
@@ -85,7 +83,7 @@ export class LocalDevProvider extends BaseProvider {
   }
 
   private async readJSON(versionPath: string) {
-    const fullPath = path.join(this.options.baseDir, path.basename(versionPath))
+    const fullPath = path.join(this.options.baseDir, versionPath)
     const content = await fs.readFile(fullPath, 'utf-8')
     const json = JSON.parse(content)
     if (!isUpdateJSON(json)) {

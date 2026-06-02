@@ -160,7 +160,8 @@ export async function createElectronApp(appOptions: AppOption = {}): Promise<voi
     await beforeStart?.(mainPath, logger)
 
     if (__EIU_IS_ESM__) {
-      runWithDefaultExport(await import(`file://${mainPath}`), updaterInstance)
+      const { pathToFileURL } = await import('node:url')
+      runWithDefaultExport(await import(pathToFileURL(mainPath).href), updaterInstance)
     } else {
       // oxlint-disable-next-line typescript/no-require-imports
       runWithDefaultExport(require(mainPath), updaterInstance)

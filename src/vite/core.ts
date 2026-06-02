@@ -380,6 +380,7 @@ export async function electronWithUpdater(
                 }
               } catch (error) {
                 console.error(error)
+                throw error
               }
             },
           },

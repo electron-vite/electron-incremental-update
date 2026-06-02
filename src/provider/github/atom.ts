@@ -22,7 +22,7 @@ export class GitHubAtomProvider extends BaseGitHubProvider {
    * @inheritdoc
    */
   protected async getVersionURL(versionPath: string, signal: AbortSignal): Promise<string> {
-    const tag = await defaultDownloadText(
+    const tag = await defaultDownloadText<string>(
       await this.parseURL(`releases.atom`),
       this.getHeaders('xml'),
       signal,
@@ -35,6 +35,7 @@ export class GitHubAtomProvider extends BaseGitHubProvider {
         }
       },
     )
-    return `releases/download/v${tag}/${versionPath}`
+    const version = tag.startsWith('v') ? tag.slice(1) : tag
+    return `releases/download/v${version}/${versionPath}`
   }
 }

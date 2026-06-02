@@ -162,7 +162,9 @@ export class Updater<
     const err = new UpdaterError(code, errorInfo)
     this.logger?.error(`[${code}] ${msg}`, err)
     this.cleanup()
-    this.emit('error', err)
+    if (this.listenerCount('error') > 0) {
+      this.emit('error', err)
+    }
   }
 
   /**

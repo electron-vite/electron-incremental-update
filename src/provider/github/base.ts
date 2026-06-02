@@ -45,11 +45,10 @@ export abstract class BaseGitHubProvider<
     this.options.urlHandler = handler
   }
 
-  protected async parseURL(extraPath: string): Promise<string> {
-    const url = new URL(
-      `/${this.options.user}/${this.options.repo}/${extraPath}`,
-      'https://github.com',
-    )
+  protected async parseURL(pathOrURL: string): Promise<string> {
+    const url = URL.canParse(pathOrURL)
+      ? new URL(pathOrURL)
+      : new URL(`/${this.options.user}/${this.options.repo}/${pathOrURL}`, 'https://github.com')
     return ((await this.urlHandler?.(url)) || url).toString()
   }
 
