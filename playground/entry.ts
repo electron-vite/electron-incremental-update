@@ -1,4 +1,4 @@
-import { createElectronApp } from '../dist/index.cjs'
+import { createElectronApp } from '../dist/index.mjs'
 
 createElectronApp({
   beforeStart(mainFilePath, logger) {

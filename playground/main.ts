@@ -1,15 +1,15 @@
 import { app, BrowserWindow } from 'electron'
 
-import { startupWithUpdater } from '../dist/index.cjs'
+import { startupWithUpdater } from '../dist/index.mjs'
 import {
   beautifyDevTools,
   getAppVersion,
   getEntryVersion,
   getPathFromAppNameAsar,
   getPathFromPreload,
-  loadPage,
   requireNative,
-} from '../dist/utils.cjs'
+  loadPage,
+} from '../dist/utils.mjs'
 
 export default startupWithUpdater(() => {
   console.table({
@@ -27,7 +27,7 @@ export default startupWithUpdater(() => {
       console.log('This is a secret string')
       const win = new BrowserWindow({
         title: 'Main window1',
-        webPreferences: { preload: getPathFromPreload('preload.js') },
+        webPreferences: { preload: getPathFromPreload('preload.mjs') },
       })
       loadPage(win)
       beautifyDevTools(win, { mono: 'Maple Mono NF CN, Maple Mono', sans: 'Mapple, -apple-system' })

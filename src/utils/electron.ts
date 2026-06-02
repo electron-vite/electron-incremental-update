@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import type { BrowserWindow } from 'electron'
 import { app } from 'electron'
@@ -74,7 +75,7 @@ export function requireNative<T = any>(moduleName: string): T {
   const m = getPathFromEntryAsar(moduleName)
   if (__EIU_IS_ESM__) {
     throw new Error(
-      `Cannot require "${m}", \`requireNative\` only support CommonJS, use \`importNative\` instead`,
+      `Cannot require "${m}", \`requireNative\` only supports CommonJS. Use \`importNative\` instead`,
     )
   }
   // oxlint-disable-next-line typescript/no-require-imports
@@ -91,10 +92,11 @@ export async function importNative<T = any>(moduleName: string): Promise<T> {
   const m = getPathFromEntryAsar(moduleName)
   if (!__EIU_IS_ESM__) {
     throw new Error(
-      `Cannot import "${m}", \`importNative\` only support ESModule, use \`requireNative\` instead`,
+      `Cannot import "${m}", \`importNative\` only supports ESModule. Use \`requireNative\` instead`,
     )
   }
-  return await import(`file://${m}.js`)
+  const modulePath = path.extname(m) ? m : `${m}.mjs`
+  return await import(pathToFileURL(modulePath).href)
 }
 
 /**

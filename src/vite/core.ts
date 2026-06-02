@@ -39,23 +39,34 @@ interface GlobalCachedResolvedOptions {
 const globalCachedResolvedOptions = globalThis as typeof globalThis & GlobalCachedResolvedOptions
 let cachedOptions = globalCachedResolvedOptions.__eiuCachedOptions
 
-function getMainFileBaseName(options: ElectronWithUpdaterOptions['main']['files']): string {
-  let mainFilePath
+function getInputEntryName(options: ElectronWithUpdaterOptions['main']['files']): string {
   if (typeof options === 'string') {
-    mainFilePath = path.basename(options)
-  } else if (Array.isArray(options)) {
-    mainFilePath = path.basename(options[0]!)
-  } else {
-    const name = options?.index ?? options?.main
-    if (!name) {
-      throw new Error(
-        `\`options.main.files\` (${options}) must have "index" or "main" key, like \`{ index: "./electron/main/index.ts" }\``,
-      )
-    }
-    mainFilePath = options?.index ? 'index.js' : 'main.js'
+    return path.parse(options).name
   }
+
+  if (Array.isArray(options)) {
+    const [firstInput] = options
+    if (!firstInput) {
+      throw new Error('`options.main.files` must contain at least one main entry')
+    }
+    return path.parse(firstInput).name
+  }
+
+  const firstEntry = Object.entries(options)[0]
+  if (!firstEntry) {
+    throw new Error('`options.main.files` must contain at least one main entry')
+  }
+
+  return firstEntry[0]
+}
+
+function getMainFileBaseName(
+  options: ElectronWithUpdaterOptions['main']['files'],
+  isESM: boolean,
+): string {
+  const mainFilePath = `${getInputEntryName(options)}.${isESM ? 'mjs' : 'js'}`
   log.info(`Using "${mainFilePath}" as main file`, { timestamp: true })
-  return mainFilePath.replace(/\.[cm]?ts$/, '.js')
+  return mainFilePath
 }
 
 function parseVersionPath(versionPath: string): string {
@@ -127,7 +138,7 @@ async function resolveCachedOptions(
       ),
     ).catch(() => {})
 
-    const mainFileBaseName = getMainFileBaseName(_main.files)
+    const mainFileBaseName = getMainFileBaseName(_main.files, isESM)
 
     return {
       isESM,
@@ -243,7 +254,7 @@ export async function electronWithUpdater(
       input: _main.files,
       onstart: _main.onstart,
       plugins: [
-        !isESM && esmShim(),
+        isESM && esmShim(),
         notBundleOption &&
           notBundle(typeof notBundleOption === 'object' ? notBundleOption : undefined),
         bytecodeOptions && bytecodePlugin('main', minify, isESM, bytecodeOptions),
@@ -258,8 +269,11 @@ export async function electronWithUpdater(
               external: finalExternal,
               platform: 'node',
               output: {
+                format: isESM ? 'es' : 'cjs',
                 minify: { codegen: { removeWhitespace: true } },
-                polyfillRequire: false,
+                entryFileNames: `[name].${isESM ? 'mjs' : 'js'}`,
+                chunkFileNames: `[name].${isESM ? 'mjs' : 'js'}`,
+                polyfillRequire: isESM,
                 exports: 'named',
               },
             },
@@ -281,7 +295,7 @@ export async function electronWithUpdater(
       },
       input: _preload.files,
       plugins: [
-        !isESM && esmShim(),
+        isESM && esmShim(),
         notBundleOption &&
           notBundle(typeof notBundleOption === 'object' ? notBundleOption : undefined),
         bytecodeOptions && bytecodePlugin('preload', minify, isESM, bytecodeOptions),
@@ -323,7 +337,7 @@ export async function electronWithUpdater(
     options: mergeConfig<InlineConfig, InlineConfig>(
       {
         plugins: [
-          !isESM && esmShim(),
+          isESM && esmShim(),
           bytecodeOptions && bytecodePlugin('entry', minify, isESM, bytecodeOptions),
           notBundleOption &&
             notBundle(typeof notBundleOption === 'object' ? notBundleOption : undefined),
@@ -376,6 +390,11 @@ export async function electronWithUpdater(
           outDir: entryOutDir,
           rolldownOptions: {
             external: finalExternal,
+            output: {
+              format: isESM ? 'es' : 'cjs',
+              entryFileNames: `[name].${isESM ? 'mjs' : 'js'}`,
+              chunkFileNames: `[name].${isESM ? 'mjs' : 'js'}`,
+            },
           },
         },
         define,
