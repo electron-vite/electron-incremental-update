@@ -4,7 +4,7 @@ import { writeFileSync } from 'node:fs'
 import { build } from 'vite'
 
 import { bytecodePlugin } from '../src/vite/bytecode'
-import { defaultExternal } from '../src/vite/core'
+import { defaultExternal } from '../src/vite/constant'
 
 describe(() => {
   it('basic plugin usage', async () => {

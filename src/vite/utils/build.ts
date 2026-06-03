@@ -6,7 +6,7 @@ import { createPackage } from '@electron/asar'
 import type { UpdateJSON } from '../../utils/version'
 import { isUpdateJSON } from '../../utils/version'
 import { log } from '../constant'
-import type { _BuildAsarOption, _BuildVersionOption } from '../option'
+import type { BuildAsarOptions, BuildVersionOptions } from '../types'
 
 import { readableSize } from './file'
 
@@ -24,7 +24,7 @@ export async function buildAsar(
     rendererDistPath,
     gzipPath,
     generateGzipFile,
-  }: _BuildAsarOption,
+  }: BuildAsarOptions,
 ): Promise<Buffer> {
   electronDistPath = path.resolve(root, electronDistPath)
   asarOutputPath = path.resolve(root, asarOutputPath)
@@ -55,7 +55,7 @@ export async function buildUpdateJson(
     minimumVersion,
     generateSignature,
     generateUpdateJson,
-  }: _BuildVersionOption,
+  }: BuildVersionOptions,
   asarBuffer: Buffer,
 ): Promise<void> {
   let _json: UpdateJSON = {
