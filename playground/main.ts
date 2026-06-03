@@ -27,9 +27,10 @@ export default startupWithUpdater(() => {
       console.log('This is a secret string')
       const win = new BrowserWindow({
         title: 'Main window1',
-        webPreferences: { preload: getPathFromPreload('preload.mjs') },
+        webPreferences: { preload: getPathFromPreload('preload.js') },
       })
       loadPage(win)
       beautifyDevTools(win, { mono: 'Maple Mono NF CN, Maple Mono', sans: 'Mapple, -apple-system' })
+      win.webContents.openDevTools()
     })
 })

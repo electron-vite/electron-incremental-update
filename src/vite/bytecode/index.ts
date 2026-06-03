@@ -12,6 +12,7 @@ import { bytecodeModuleLoaderCode } from './code'
 import {
   bytecodeModuleLoader,
   compileToBytecode,
+  createPrepareContext,
   prepare,
   toRelativePath,
   useStrict,
@@ -108,6 +109,7 @@ export function bytecodePlugin(
           (f): f is (typeof output)[string] & { type: 'chunk' } => f.type === 'chunk' && !f.isEntry,
         )
         .map((c) => path.basename(c.fileName))
+      const prepareContext = createPrepareContext(nonEntryBasenames)
 
       // Process chunks concurrently with controlled parallelism
       await Promise.all(
@@ -120,7 +122,7 @@ export function bytecodePlugin(
           const absPath = path.join(dir, fileName)
 
           // 1. Prepare code (minify + runtime cleanup)
-          let code = prepare(chunk.code, minify, nonEntryBasenames)?.code || chunk.code
+          let code = prepare(chunk.code, minify, prepareContext)?.code || chunk.code
 
           // 2. Optional transformation hook
           if (beforeCompile) {
