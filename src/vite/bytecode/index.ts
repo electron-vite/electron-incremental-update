@@ -1,8 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import type { Plugin } from 'vite'
 import { normalizePath } from 'vite'
+import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
 
 import type { Promisable } from '../../utils/type'
 import { bytecodeId, bytecodeLog } from '../constant'
@@ -50,13 +50,14 @@ export function bytecodePlugin(
   minify: boolean,
   isESM: boolean,
   options: BytecodeOptions,
-): Plugin | null {
+): MultiEnvElectronOptions['plugins'] | null {
   const { enable, preload = false, electronPath, beforeCompile } = options
   if (!enable) {
     return null
   }
 
   if (!preload && env === 'preload') {
+    // todo)) suppress multiple logs
     bytecodeLog.warn(
       '`bytecodePlugin` is skipped in preload. Enable with "preload: true" and set `sandbox: false` in BrowserWindow',
       { timestamp: true },
@@ -76,8 +77,6 @@ export function bytecodePlugin(
 
   return {
     name: bytecodeId,
-    apply: 'build',
-    enforce: 'post',
 
     generateBundle(_, bundle) {
       // Only emit loader if actual JS chunks exist (skip if only assets)

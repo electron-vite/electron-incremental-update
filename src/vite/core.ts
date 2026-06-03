@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { isCI } from 'ci-info'
-import type { EnvironmentOptions, PluginOption } from 'vite'
+import type { EnvironmentOptions, Plugin } from 'vite'
 import { mergeConfig } from 'vite'
 import electron from 'vite-plugin-electron/multi-env'
 import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
@@ -54,7 +54,7 @@ import { copyAndSkipIfExist } from './utils/file'
  */
 export async function electronWithUpdater(
   options: ElectronWithUpdaterOptions,
-): Promise<PluginOption[] | undefined> {
+): Promise<Plugin[] | undefined> {
   const {
     isBuild,
     root,
