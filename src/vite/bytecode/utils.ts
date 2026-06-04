@@ -9,11 +9,6 @@ import { bytecodeGeneratorScript } from './code'
 export const useStrict = "'use strict';"
 export const bytecodeModuleLoader = '__loader__.js'
 
-export function toRelativePath(filename: string, importer: string): string {
-  const relPath = path.posix.relative(path.dirname(importer), filename)
-  return relPath.startsWith('.') ? relPath : `./${relPath}`
-}
-
 async function resolvePaths(
   customPath: string | undefined,
 ): Promise<{ electronPath: string; bytecodePath: string }> {

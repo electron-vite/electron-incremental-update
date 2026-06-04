@@ -14,7 +14,6 @@ import {
   compileToBytecode,
   createPrepareContext,
   prepare,
-  toRelativePath,
   useStrict,
 } from './utils'
 
@@ -39,10 +38,12 @@ export interface BytecodeOptions {
   beforeCompile?: (code: string, id: string) => Promisable<string | null | undefined | void>
 }
 
-const LOADER_REQUIRE = `require("${toRelativePath(bytecodeModuleLoader, '')}")`
-
 function getBytecodeLoaderBlock(chunkFileName: string): string {
-  return LOADER_REQUIRE.replace(/['"]$/, `/${toRelativePath('', normalizePath(chunkFileName))}"`)
+  const loaderFileName = path.posix.relative(
+    path.posix.dirname(chunkFileName),
+    bytecodeModuleLoader,
+  )
+  return `require("${loaderFileName.startsWith('.') ? loaderFileName : `./${loaderFileName}`}")`
 }
 
 export function bytecodePlugin(
