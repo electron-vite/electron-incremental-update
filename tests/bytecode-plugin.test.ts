@@ -18,7 +18,7 @@ describe(() => {
     const result = await build({
       configFile: false,
       publicDir: false,
-      plugins: [plugin],
+      plugins: [plugin as any],
       mode: 'build',
       define: {
         __EIU_IS_DEV__: JSON.stringify(false),
