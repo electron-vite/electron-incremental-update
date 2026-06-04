@@ -3,132 +3,90 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import * as babel from '@babel/core'
-import { getPackageInfoSync } from 'local-pkg'
-
-import { parseVersion } from '../../utils/version'
 
 import { bytecodeGeneratorScript } from './code'
-
-interface ElectronModuleInfo {
-  version: string | undefined
-  rootPath: string
-}
-
-let cachedElectronModule: ElectronModuleInfo | undefined
-let cachedElectronMajorVersion: number | undefined
-let cachedElectronPath: string | undefined
-let cachedBytecodeCompilerPath: string | undefined
 
 export const useStrict = "'use strict';"
 export const bytecodeModuleLoader = '__loader__.js'
 
-export function getElectronModule(): ElectronModuleInfo {
-  if (!cachedElectronModule) {
-    const electronModule = getPackageInfoSync('electron')
-    if (!electronModule) {
-      throw new Error('Electron does not installed')
-    }
-    cachedElectronModule = {
-      version: electronModule.version,
-      rootPath: electronModule.rootPath,
-    }
-  }
-
-  return cachedElectronModule
-}
-
-export function getElectronMajorVersion(): number {
-  if (cachedElectronMajorVersion === undefined) {
-    cachedElectronMajorVersion = parseVersion(getElectronModule().version ?? '0.0.0').major
-  }
-
-  return cachedElectronMajorVersion
-}
-
-function getElectronPath(): string {
-  if (cachedElectronPath) {
-    return cachedElectronPath
-  }
-
-  const electronModulePath = getElectronModule().rootPath
-  let electronExecPath = process.env.ELECTRON_EXEC_PATH || ''
-  if (!electronExecPath) {
-    const pathFile = path.join(electronModulePath, 'path.txt')
-    let executablePath
-    if (fs.existsSync(pathFile)) {
-      executablePath = fs.readFileSync(pathFile, 'utf-8').trim()
-    }
-    if (executablePath) {
-      electronExecPath = path.join(electronModulePath, 'dist', executablePath)
-      process.env.ELECTRON_EXEC_PATH = electronExecPath
-    } else {
-      throw new Error('Electron executable file does not exist')
-    }
-  }
-
-  cachedElectronPath = electronExecPath
-  return electronExecPath
-}
-function getBytecodeCompilerPath(): string {
-  if (cachedBytecodeCompilerPath) {
-    return cachedBytecodeCompilerPath
-  }
-
-  const scriptPath = path.join(getElectronModule().rootPath, 'EIU_bytenode.cjs')
-  if (!fs.existsSync(scriptPath)) {
-    fs.writeFileSync(scriptPath, bytecodeGeneratorScript)
-  }
-  cachedBytecodeCompilerPath = scriptPath
-  return scriptPath
-}
 export function toRelativePath(filename: string, importer: string): string {
   const relPath = path.posix.relative(path.dirname(importer), filename)
   return relPath.startsWith('.') ? relPath : `./${relPath}`
 }
 
-export function compileToBytecode(
+async function resolvePaths(
+  customPath: string | undefined,
+): Promise<{ electronPath: string; bytecodePath: string }> {
+  if (!customPath || !process.__electron_path) {
+    process.__electron_path = (await import('electron')).default as unknown as string
+  }
+
+  if (!process.__bytecode_compiler_path) {
+    process.__bytecode_compiler_path = path.join(
+      path.dirname(process.__electron_path),
+      'EIU_bytenode.cjs',
+    )
+  }
+  if (!fs.existsSync(process.__bytecode_compiler_path)) {
+    fs.writeFileSync(process.__bytecode_compiler_path, bytecodeGeneratorScript)
+  }
+  return {
+    electronPath: customPath || process.__electron_path,
+    bytecodePath: process.__bytecode_compiler_path,
+  }
+}
+
+export async function compileToBytecode(
   code: string,
   name: string,
-  electronPath: string = getElectronPath(),
+  customElectronPath?: string,
 ): Promise<Buffer | string> {
-  const bytecodePath = getBytecodeCompilerPath()
-  return new Promise<Buffer>((resolve, reject) => {
-    const proc = cp.spawn(electronPath, [bytecodePath], {
-      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
-      stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
-    })
-    const stdoutChunks: Buffer[] = []
-    const stderrChunks: Buffer[] = []
+  try {
+    const { bytecodePath, electronPath } = await resolvePaths(customElectronPath)
+    return await new Promise<Buffer>((resolve, reject) => {
+      const proc = cp.spawn(electronPath!, [bytecodePath], {
+        env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+        stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+      })
+      const stdoutChunks: Buffer[] = []
+      const stderrChunks: Buffer[] = []
 
-    if (proc.stdin) {
-      proc.stdin.write(code)
-      proc.stdin.end()
-    }
-
-    if (proc.stdout) {
-      proc.stdout.on('data', (chunk) => stdoutChunks.push(chunk)).on('error', (err) => reject(err))
-    }
-
-    if (proc.stderr) {
-      proc.stderr.on('data', (chunk) => stderrChunks.push(chunk)).on('error', (err) => reject(err))
-    }
-
-    proc.on('error', (err) => reject(err))
-
-    proc.on('close', (exitCode) => {
-      if (exitCode !== 0 || stderrChunks.length > 0) {
-        const errorMessage = Buffer.concat(stderrChunks).toString('utf-8')
-        reject(
-          new Error(
-            `Bytecode generation process exited with code ${exitCode}. Error: ${errorMessage}`,
-          ),
-        )
-        return
+      if (proc.stdin) {
+        proc.stdin.write(code)
+        proc.stdin.end()
       }
 
-      resolve(Buffer.concat(stdoutChunks))
+      if (proc.stdout) {
+        proc.stdout
+          .on('data', (chunk_2) => stdoutChunks.push(chunk_2))
+          .on('error', (err) => reject(err))
+      }
+
+      if (proc.stderr) {
+        proc.stderr
+          .on('data', (chunk_3) => stderrChunks.push(chunk_3))
+          .on('error', (err_1) => reject(err_1))
+      }
+
+      proc.on('error', (err_2) => reject(err_2))
+
+      proc.on('close', (exitCode) => {
+        if (exitCode !== 0 || stderrChunks.length > 0) {
+          const errorMessage = Buffer.concat(stderrChunks).toString('utf-8')
+          reject(
+            new Error(
+              `Bytecode generation process exited with code ${exitCode}. Error: ${errorMessage}`,
+            ),
+          )
+          return
+        }
+
+        resolve(Buffer.concat(stdoutChunks))
+      })
     })
-  }).catch((e) => `Failed to generate bytecode of [${name}], ${e}`)
+  } catch (e) {
+    return `Failed to generate bytecode of [${name}], ${e}`
+  }
 }
 
 interface ObfuscateState {
