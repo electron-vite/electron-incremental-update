@@ -2,9 +2,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { isCI } from 'ci-info'
-import { loadPackageJSON } from 'local-pkg'
 import type { EnvironmentOptions, Plugin } from 'vite'
 import { mergeConfig, normalizePath } from 'vite'
+import { loadPackageJSON } from 'vite-plugin-electron'
 import electron from 'vite-plugin-electron/multi-env'
 import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
 import { notBundle, esmShim } from 'vite-plugin-electron/plugin'
@@ -379,7 +379,7 @@ async function createElectronOptions(
 export async function electronWithUpdater(
   options: ElectronWithUpdaterOptions,
 ): Promise<Plugin[] | undefined> {
-  process.cachedElectronOptions ??= await createElectronOptions(options)
+  process.CACHED_ELECTRON_OPTIONS ??= await createElectronOptions(options)
 
-  return electron(process.cachedElectronOptions.map((opt) => Object.assign({}, opt)))
+  return electron(process.CACHED_ELECTRON_OPTIONS.map((opt) => Object.assign({}, opt)))
 }

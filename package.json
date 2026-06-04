@@ -67,7 +67,6 @@
     "@babel/plugin-transform-arrow-functions": "^7.29.7",
     "@babel/plugin-transform-template-literals": "^7.29.7",
     "ci-info": "^4.4.0",
-    "local-pkg": "^1.2.1",
     "selfsigned": "^5.5.0",
     "vite-plugin-electron": "~1.0.1"
   },

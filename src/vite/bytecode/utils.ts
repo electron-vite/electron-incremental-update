@@ -12,22 +12,22 @@ export const bytecodeModuleLoader = '__loader__.js'
 async function resolvePaths(
   customPath: string | undefined,
 ): Promise<{ electronPath: string; bytecodePath: string }> {
-  if (!customPath || !process.__electron_path) {
-    process.__electron_path = (await import('electron')).default as unknown as string
+  if (!customPath || !process.CACHED_ELECTRON_PATH) {
+    process.CACHED_ELECTRON_PATH = (await import('electron')).default as unknown as string
   }
 
-  if (!process.__bytecode_compiler_path) {
-    process.__bytecode_compiler_path = path.join(
-      path.dirname(process.__electron_path),
+  if (!process.CACHED_BYTECODE_COMPILER_PATH) {
+    process.CACHED_BYTECODE_COMPILER_PATH = path.join(
+      path.dirname(process.CACHED_ELECTRON_PATH),
       'EIU_bytenode.cjs',
     )
   }
-  if (!fs.existsSync(process.__bytecode_compiler_path)) {
-    fs.writeFileSync(process.__bytecode_compiler_path, bytecodeGeneratorScript)
+  if (!fs.existsSync(process.CACHED_BYTECODE_COMPILER_PATH)) {
+    fs.writeFileSync(process.CACHED_BYTECODE_COMPILER_PATH, bytecodeGeneratorScript)
   }
   return {
-    electronPath: customPath || process.__electron_path,
-    bytecodePath: process.__bytecode_compiler_path,
+    electronPath: customPath || process.CACHED_ELECTRON_PATH,
+    bytecodePath: process.CACHED_BYTECODE_COMPILER_PATH,
   }
 }
 

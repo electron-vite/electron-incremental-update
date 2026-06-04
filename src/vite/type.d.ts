@@ -1,8 +1,8 @@
 declare namespace NodeJS {
   interface Process {
     electronApp: import('node:child_process').ChildProcess
-    cachedElectronOptions?: import('vite-plugin-electron/multi-env').MultiEnvElectronOptions[]
-    __electron_path: string | undefined
-    __bytecode_compiler_path: string | undefined
+    CACHED_ELECTRON_OPTIONS?: import('vite-plugin-electron/multi-env').MultiEnvElectronOptions[]
+    CACHED_ELECTRON_PATH: string | undefined
+    CACHED_BYTECODE_COMPILER_PATH: string | undefined
   }
 }
