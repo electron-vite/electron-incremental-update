@@ -1,4 +1,4 @@
-import type { InlineConfig, UserConfig, UserConfigFn } from 'vite'
+import type { UserConfig, UserConfigFn } from 'vite'
 
 import { electronWithUpdater } from './core'
 import type { ElectronWithUpdaterOptions } from './types'
@@ -12,7 +12,7 @@ export interface ElectronViteHelperOptions extends MakeOptional<
   /**
    * Config for renderer process
    */
-  renderer?: Omit<UserConfig, 'root'>
+  renderer?: UserConfig
 }
 
 /**
@@ -51,7 +51,6 @@ export function defineElectronConfig(options: ElectronViteHelperOptions): UserCo
     const result = options.renderer ?? {}
     result.plugins ??= []
     result.plugins.push(electronPlugin)
-    ;(result as InlineConfig).root = options.root
     const rendererDistPath = options.updater?.paths?.rendererDistPath
     if (rendererDistPath) {
       result.build ??= {}

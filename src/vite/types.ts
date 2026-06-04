@@ -1,11 +1,10 @@
-import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
-import type { NotBundleOptions } from 'vite-plugin-electron/plugin'
-
 import type { Promisable } from '../utils/type'
 import type { UpdateJSON } from '../utils/version'
 
 import type { BytecodeOptions } from './bytecode'
 import type { DistinguishedName } from './utils/key'
+import type { MultiEnvElectronOptions } from './vite-plugin-electron/multi-env'
+import type { NotBundleOptions } from './vite-plugin-electron/plugin'
 
 export interface PKG {
   name: string
@@ -47,12 +46,6 @@ export interface ElectronWithUpdaterOptions {
    * ```
    */
   isBuild: boolean
-  /**
-   * Project root directory. Can be an absolute path, or a path relative from
-   * the location of the config file itself.
-   * @default process.cwd()
-   */
-  root?: string
   /**
    * Whether to generate sourcemap
    * @default !isBuild || !!process.env.VSCODE_DEBUG

@@ -2,11 +2,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { normalizePath } from 'vite'
-import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
 
 import type { Promisable } from '../../utils/type'
 import { bytecodeId, bytecodeLog } from '../constant'
 import { readableSize } from '../utils/file'
+import type { MultiEnvElectronOptions } from '../vite-plugin-electron/multi-env'
 
 import { bytecodeModuleLoaderCode } from './code'
 import {

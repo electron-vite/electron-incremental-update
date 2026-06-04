@@ -4,10 +4,13 @@ import path from 'node:path'
 import { isCI } from 'ci-info'
 import type { EnvironmentOptions, Plugin } from 'vite'
 import { mergeConfig, normalizePath } from 'vite'
-import { loadPackageJSON } from 'vite-plugin-electron'
-import electron from 'vite-plugin-electron/multi-env'
-import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
+import { electronPluginFactory } from 'vite-plugin-electron/multi-env'
+import type {
+  MultiEnvElectronOptions,
+  ElectronFactoryContext,
+} from 'vite-plugin-electron/multi-env'
 import { notBundle, esmShim } from 'vite-plugin-electron/plugin'
+import type { NotBundleOptions } from 'vite-plugin-electron/plugin'
 
 import { defaultSignature } from '../utils/crypto'
 import { defaultVersionJsonGenerator } from '../utils/version'
@@ -121,10 +124,10 @@ function normalizeVersionPath(versionPath: string): string {
 
 async function createElectronOptions(
   options: ElectronWithUpdaterOptions,
+  context: ElectronFactoryContext,
 ): Promise<MultiEnvElectronOptions[]> {
   const {
     isBuild,
-    root = process.cwd(),
     entry,
     main,
     preload,
@@ -137,7 +140,7 @@ async function createElectronOptions(
     bytecode,
   } = options
 
-  const pkg = await loadPackageJSON(root)
+  const pkg = context.packageJson
   if (!pkg || !pkg.version || !pkg.name || !pkg.main) {
     throw new Error('package.json not found or invalid, must contains version, name and main field')
   }
@@ -152,6 +155,11 @@ async function createElectronOptions(
 
   const bytecodeOptions =
     typeof bytecode === 'object' ? bytecode : bytecode === true ? { enable: true } : undefined
+  const notBundleOptions: NotBundleOptions | undefined = notBundleOption
+    ? typeof notBundleOption === 'object'
+      ? notBundleOption
+      : {}
+    : undefined
 
   if (isESM && bytecodeOptions?.enable) {
     throw new Error(
@@ -170,7 +178,7 @@ async function createElectronOptions(
   log.info(`Clear cache files`, { timestamp: true })
   await Promise.all(
     [buildAsarOption.rendererDistPath, buildAsarOption.electronDistPath, entryOutDir].map((p) =>
-      fs.promises.rm(path.resolve(root, p), { recursive: true, force: true }),
+      fs.promises.rm(path.resolve(context.root, p), { recursive: true, force: true }),
     ),
   ).catch(() => {})
 
@@ -200,8 +208,7 @@ async function createElectronOptions(
       onstart: main.onstart,
       plugins: [
         isESM && esmShim(),
-        notBundleOption &&
-          notBundle(typeof notBundleOption === 'object' ? notBundleOption : undefined),
+        notBundleOptions && notBundle(notBundleOptions),
         bytecodeOptions && bytecodePlugin('main', minify, isESM, bytecodeOptions),
       ],
       options: mergeConfig<EnvironmentOptions, EnvironmentOptions>(
@@ -237,8 +244,7 @@ async function createElectronOptions(
       input: preload.files,
       plugins: [
         isESM && esmShim(),
-        notBundleOption &&
-          notBundle(typeof notBundleOption === 'object' ? notBundleOption : undefined),
+        notBundleOptions && notBundle(notBundleOptions),
         bytecodeOptions && bytecodePlugin('preload', minify, isESM, bytecodeOptions),
       ],
       options: mergeConfig<EnvironmentOptions, EnvironmentOptions>(
@@ -276,8 +282,7 @@ async function createElectronOptions(
     plugins: [
       isESM && esmShim(),
       bytecodeOptions && bytecodePlugin('entry', minify, isESM, bytecodeOptions),
-      notBundleOption &&
-        notBundle(typeof notBundleOption === 'object' ? notBundleOption : undefined),
+      notBundleOptions && notBundle(notBundleOptions),
       {
         name: `${id}:entry`,
         async closeBundle() {
@@ -304,7 +309,7 @@ async function createElectronOptions(
             return
           }
 
-          const buffer = await buildAsar(root, buildAsarOption)
+          const buffer = await buildAsar(context.root, buildAsarOption)
           if (!buildVersionJson && !isCI) {
             log.warn(
               'No `buildVersionJson` option setup, skip build version json. Only build in CI by default',
@@ -379,7 +384,8 @@ async function createElectronOptions(
 export async function electronWithUpdater(
   options: ElectronWithUpdaterOptions,
 ): Promise<Plugin[] | undefined> {
-  process.CACHED_ELECTRON_OPTIONS ??= await createElectronOptions(options)
-
-  return electron(process.CACHED_ELECTRON_OPTIONS.map((opt) => Object.assign({}, opt)))
+  return electronPluginFactory((context) => {
+    process.CACHED_ELECTRON_OPTIONS ??= createElectronOptions(options, context)
+    return process.CACHED_ELECTRON_OPTIONS
+  })
 }

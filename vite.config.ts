@@ -1,7 +1,6 @@
 import { defineElectronConfig } from './src/vite'
 
 export default defineElectronConfig({
-  root: './playground',
   bytecode: true,
   entry: {
     files: ['./entry.ts', './native.ts'],
@@ -12,6 +11,8 @@ export default defineElectronConfig({
   preload: {
     files: './preload.ts',
   },
-  renderer: {},
+  renderer: {
+    root: './playground',
+  },
   updater: {},
 })
