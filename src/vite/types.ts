@@ -1,10 +1,11 @@
+import type { RolldownOrRollupOptions } from 'vite-plugin-electron'
+import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
+
 import type { Promisable } from '../utils/type'
 import type { UpdateJSON } from '../utils/version'
 
 import type { BytecodeOptions } from './bytecode'
 import type { DistinguishedName } from './utils/key'
-import type { MultiEnvElectronOptions } from './vite-plugin-electron/multi-env'
-import type { NotBundleOptions } from './vite-plugin-electron/plugin'
 
 export interface PKG {
   name: string
@@ -38,15 +39,6 @@ export interface CommonBuildOption {
 
 export interface ElectronWithUpdaterOptions {
   /**
-   * Whether is in build mode
-   * ```ts
-   * export default defineConfig(({ command }) => {
-   *   const isBuild = command === 'build'
-   * })
-   * ```
-   */
-  isBuild: boolean
-  /**
    * Whether to generate sourcemap
    * @default !isBuild || !!process.env.VSCODE_DEBUG
    */
@@ -70,7 +62,7 @@ export interface ElectronWithUpdaterOptions {
    * Only works in development (`isBuild === false`).
    * @default true
    */
-  notBundle?: boolean | NotBundleOptions
+  notBundle?: boolean | RolldownOrRollupOptions['external']
   /**
    * @deprecated use `notBundle` instead
    */

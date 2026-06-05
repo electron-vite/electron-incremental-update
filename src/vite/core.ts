@@ -9,8 +9,7 @@ import type {
   MultiEnvElectronOptions,
   ElectronFactoryContext,
 } from 'vite-plugin-electron/multi-env'
-import { notBundle, esmShim } from 'vite-plugin-electron/plugin'
-import type { NotBundleOptions } from 'vite-plugin-electron/plugin'
+import { esmShim } from 'vite-plugin-electron/plugin'
 
 import { defaultSignature } from '../utils/crypto'
 import { defaultVersionJsonGenerator } from '../utils/version'
@@ -127,14 +126,13 @@ async function createElectronOptions(
   context: ElectronFactoryContext,
 ): Promise<MultiEnvElectronOptions[]> {
   const {
-    isBuild,
     entry,
     main,
     preload,
-    sourcemap = !isBuild || !!process.env.VSCODE_DEBUG,
-    minify = isBuild,
+    sourcemap = !context.isDev || !!process.env.VSCODE_DEBUG,
+    minify = context.isDev,
     buildVersionJson,
-    notBundle: notBundleOption = true,
+    notBundle = true,
     external,
     updater,
     bytecode,
@@ -155,11 +153,6 @@ async function createElectronOptions(
 
   const bytecodeOptions =
     typeof bytecode === 'object' ? bytecode : bytecode === true ? { enable: true } : undefined
-  const notBundleOptions: NotBundleOptions | undefined = notBundleOption
-    ? typeof notBundleOption === 'object'
-      ? notBundleOption
-      : {}
-    : undefined
 
   if (isESM && bytecodeOptions?.enable) {
     throw new Error(
@@ -191,7 +184,7 @@ async function createElectronOptions(
     __EIU_ASAR_BASE_NAME__: JSON.stringify(path.basename(buildAsarOption.asarOutputPath)),
     __EIU_ELECTRON_DIST_PATH__: JSON.stringify(normalizePath(buildAsarOption.electronDistPath)),
     __EIU_ENTRY_DIST_PATH__: JSON.stringify(normalizePath(entryOutDir)),
-    __EIU_IS_DEV__: JSON.stringify(!isBuild),
+    __EIU_IS_DEV__: JSON.stringify(context.isDev),
     __EIU_IS_ESM__: JSON.stringify(isESM),
     __EIU_MAIN_FILE__: JSON.stringify(mainFileName),
     __EIU_SIGNATURE_CERT__: JSON.stringify(buildVersionOption.cert),
@@ -206,9 +199,9 @@ async function createElectronOptions(
       name: 'main',
       input: main.files,
       onstart: main.onstart,
+      notBundle,
       plugins: [
         isESM && esmShim(),
-        notBundleOptions && notBundle(notBundleOptions),
         bytecodeOptions && bytecodePlugin('main', minify, isESM, bytecodeOptions),
       ],
       options: mergeConfig<EnvironmentOptions, EnvironmentOptions>(
@@ -241,10 +234,10 @@ async function createElectronOptions(
         // Notify the Renderer-Process to reload the page when the Preload-Scripts build is complete
         args.reload()
       },
+      notBundle,
       input: preload.files,
       plugins: [
         isESM && esmShim(),
-        notBundleOptions && notBundle(notBundleOptions),
         bytecodeOptions && bytecodePlugin('preload', minify, isESM, bytecodeOptions),
       ],
       options: mergeConfig<EnvironmentOptions, EnvironmentOptions>(
@@ -279,16 +272,16 @@ async function createElectronOptions(
     async onstart(args) {
       await args.startup()
     },
+    notBundle,
     plugins: [
       isESM && esmShim(),
       bytecodeOptions && bytecodePlugin('entry', minify, isESM, bytecodeOptions),
-      notBundleOptions && notBundle(notBundleOptions),
       {
         name: `${id}:entry`,
         async closeBundle() {
           log.info(`Build entry to '${entryOutDir}'`, { timestamp: true })
           await entry.postBuild?.({
-            isBuild,
+            isBuild: !context.isDev,
             getPathFromEntryOutputDir(...paths) {
               return path.join(entryOutDir, ...paths)
             },
@@ -305,7 +298,7 @@ async function createElectronOptions(
             },
           })
 
-          if (!isBuild) {
+          if (!context.isDev) {
             return
           }
 
