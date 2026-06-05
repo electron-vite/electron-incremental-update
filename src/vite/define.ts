@@ -1,14 +1,9 @@
-import type { UserConfig, UserConfigFn } from 'vite'
+import type { UserConfig } from 'vite'
 
 import { electronWithUpdater } from './core'
 import type { ElectronWithUpdaterOptions } from './types'
 
-type MakeOptional<T, K extends keyof T> = Partial<Pick<T, K>> & Omit<T, K>
-
-export interface ElectronViteHelperOptions extends MakeOptional<
-  ElectronWithUpdaterOptions,
-  'isBuild'
-> {
+export interface ElectronViteHelperOptions extends ElectronWithUpdaterOptions {
   /**
    * Config for renderer process
    */
@@ -44,18 +39,15 @@ export interface ElectronViteHelperOptions extends MakeOptional<
  * })
  * ```
  */
-export function defineElectronConfig(options: ElectronViteHelperOptions): UserConfigFn {
-  return ({ command }) => {
-    options.isBuild ??= command === 'build'
-    const electronPlugin = electronWithUpdater(options as ElectronWithUpdaterOptions)
-    const result = options.renderer ?? {}
-    result.plugins ??= []
-    result.plugins.push(electronPlugin)
-    const rendererDistPath = options.updater?.paths?.rendererDistPath
-    if (rendererDistPath) {
-      result.build ??= {}
-      result.build.outDir = rendererDistPath
-    }
-    return result
+export function defineElectronConfig(options: ElectronViteHelperOptions): UserConfig {
+  const electronPlugin = electronWithUpdater(options as ElectronWithUpdaterOptions)
+  const result = options.renderer ?? {}
+  result.plugins ??= []
+  result.plugins.push(electronPlugin)
+  const rendererDistPath = options.updater?.paths?.rendererDistPath
+  if (rendererDistPath) {
+    result.build ??= {}
+    result.build.outDir = rendererDistPath
   }
+  return result
 }

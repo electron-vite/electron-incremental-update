@@ -33,4 +33,5 @@ export default startupWithUpdater(() => {
       beautifyDevTools(win, { mono: 'Maple Mono NF CN, Maple Mono', sans: 'Mapple, -apple-system' })
       win.webContents.openDevTools()
     })
+  app.on('window-all-closed', app.quit)
 })

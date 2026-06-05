@@ -2,11 +2,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { normalizePath } from 'vite'
+import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
 
 import type { Promisable } from '../../utils/type'
 import { bytecodeId, bytecodeLog } from '../constant'
 import { readableSize } from '../utils/file'
-import type { MultiEnvElectronOptions } from '../vite-plugin-electron/multi-env'
 
 import { bytecodeModuleLoaderCode } from './code'
 import {
@@ -57,12 +57,13 @@ export function bytecodePlugin(
     return null
   }
 
-  if (!preload && env === 'preload') {
-    // todo)) suppress multiple logs
-    bytecodeLog.warn(
-      '`bytecodePlugin` is skipped in preload. Enable with "preload: true" and set `sandbox: false` in BrowserWindow',
-      { timestamp: true },
-    )
+  if (env === 'preload' && !preload) {
+    if (preload === undefined) {
+      bytecodeLog.warn(
+        '`bytecodePlugin` is skipped in preload. Set `preload: false` to disable this warning, or `preload: true` and set `sandbox: false` in BrowserWindow to enable bytecode in preload.',
+        { timestamp: true },
+      )
+    }
     return null
   }
 

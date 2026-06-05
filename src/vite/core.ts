@@ -129,8 +129,8 @@ async function createElectronOptions(
     entry,
     main,
     preload,
-    sourcemap = !context.isDev || !!process.env.VSCODE_DEBUG,
-    minify = context.isDev,
+    sourcemap = context.isDev || !!process.env.VSCODE_DEBUG,
+    minify = !context.isDev,
     buildVersionJson,
     notBundle = true,
     external,
@@ -298,7 +298,7 @@ async function createElectronOptions(
             },
           })
 
-          if (!context.isDev) {
+          if (context.isDev) {
             return
           }
 

@@ -1,7 +1,10 @@
 import { defineElectronConfig } from './src/vite'
 
 export default defineElectronConfig({
-  bytecode: true,
+  bytecode: {
+    enable: true,
+    preload: false,
+  },
   entry: {
     files: ['./entry.ts', './native.ts'],
   },

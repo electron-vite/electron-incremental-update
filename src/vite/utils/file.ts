@@ -1,7 +1,8 @@
 import fs from 'node:fs'
 
+import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
+
 import { log } from '../constant'
-import type { MultiEnvElectronOptions } from '../vite-plugin-electron/multi-env'
 
 /**
  * Convert byte size to human-readable format
