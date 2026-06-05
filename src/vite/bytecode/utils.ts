@@ -166,8 +166,52 @@ function obfuscateStringsPlugin(
   _: unknown,
   options: { offset?: number },
 ): babel.PluginObj<ObfuscateState> {
+  function transformProperty(
+    path: babel.NodePath<babel.types.MemberExpression | babel.types.OptionalMemberExpression>,
+  ) {
+    const node = path.node
+    if (node.computed || !babel.types.isIdentifier(node.property)) {
+      return
+    }
+
+    const isInsideDecoder = path.findParent(
+      (parent) =>
+        parent.isFunctionDeclaration() &&
+        babel.types.isIdentifier(parent.node.id, { name: '_0xstr_' }),
+    )
+
+    if (isInsideDecoder) {
+      return
+    }
+
+    node.computed = true
+    node.property = babel.types.stringLiteral(node.property.name)
+  }
+
   return {
     visitor: {
+      MemberExpression(path: babel.NodePath<babel.types.MemberExpression>) {
+        transformProperty(path)
+      },
+      OptionalMemberExpression(path: babel.NodePath<babel.types.OptionalMemberExpression>) {
+        transformProperty(path)
+      },
+      ObjectProperty(path: babel.NodePath<babel.types.ObjectProperty>, state: ObfuscateState) {
+        const key = path.node.key
+
+        if (
+          path.node.computed ||
+          path.node.shorthand ||
+          !babel.types.isIdentifier(key) ||
+          key.name === '__proto__'
+        ) {
+          return
+        }
+
+        path.node.computed = true
+        path.node.key = createObfuscatedStringCall(key.name, options.offset)
+        state.hasTransformed = true
+      },
       StringLiteral(path: babel.NodePath<babel.types.StringLiteral>, state: ObfuscateState) {
         const parent = path.parent
         const node = path.node
@@ -261,7 +305,14 @@ export function prepare(
   context: PrepareContext,
   offset?: number,
 ): babel.BabelFileResult | null {
-  if (!code.includes('"') && !code.includes("'") && !code.includes('`') && !code.includes('=>')) {
+  if (
+    !code.includes('"') &&
+    !code.includes("'") &&
+    !code.includes('`') &&
+    !code.includes('=>') &&
+    !/\.[A-Za-z_$]/.test(code) &&
+    !/[{,]\s*[A-Za-z_$][\w$]*\s*:/.test(code)
+  ) {
     return { code }
   }
 
