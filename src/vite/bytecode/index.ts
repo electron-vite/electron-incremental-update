@@ -1,4 +1,3 @@
-import fs from 'node:fs'
 import path from 'node:path'
 
 import { normalizePath } from 'vite'
@@ -80,7 +79,7 @@ export function bytecodePlugin(
   return {
     name: bytecodeId,
 
-    generateBundle(_, bundle) {
+    async generateBundle(outputOptions, bundle) {
       // Only emit loader if actual JS chunks exist (skip if only assets)
       hasJsChunks = Object.values(bundle).some(
         (file) =>
@@ -96,31 +95,31 @@ export function bytecodePlugin(
           fileName: bytecodeModuleLoader,
         })
       }
-    },
 
-    // Optimized: Unified processing with minimal I/O and no graph traversal
-    async writeBundle({ dir }, output) {
-      if (!dir || !hasJsChunks) {
+      if (!hasJsChunks) {
         return
       }
 
+      const outputDir = outputOptions.dir ?? (outputOptions.file && path.dirname(outputOptions.file))
+
       // Precompute non-entry basenames ONCE (critical for prepare())
-      const nonEntryBasenames = Object.values(output)
+      const nonEntryBasenames = Object.values(bundle)
         .filter(
-          (f): f is (typeof output)[string] & { type: 'chunk' } => f.type === 'chunk' && !f.isEntry,
+          (f): f is (typeof bundle)[string] & { type: 'chunk' } => f.type === 'chunk' && !f.isEntry,
         )
-        .map((c) => path.basename(c.fileName))
+        .map((c) => path.posix.basename(c.fileName))
       const prepareContext = createPrepareContext(nonEntryBasenames)
 
       // Process chunks concurrently with controlled parallelism
       await Promise.all(
-        Object.entries(output).map(async ([fileName, item]) => {
+        Object.entries(bundle).map(async ([fileName, item]) => {
           if (item.type !== 'chunk' || fileName === bytecodeModuleLoader) {
             return
           }
 
           const chunk = item as any
-          const absPath = path.join(dir, fileName)
+          const bytecodeFileName = `${fileName}c`
+          const absPath = outputDir ? path.join(outputDir, fileName) : fileName
 
           // 1. Prepare code (minify + runtime cleanup)
           let code = prepare(chunk.code, minify, prepareContext)?.code || chunk.code
@@ -139,20 +138,23 @@ export function bytecodePlugin(
             throw new TypeError(bytecode)
           }
 
-          // 4. Write bytecode file (.jsc)
+          // 4. Emit bytecode file (.jsc/.cjsc)
+          this.emitFile({
+            type: 'asset',
+            source: bytecode,
+            fileName: bytecodeFileName,
+          })
           const bytecodePath = `${absPath}c`
-          fs.writeFileSync(bytecodePath, bytecode)
           bytecodeFiles.push({ file: bytecodePath, size: bytecode.length })
 
-          // 5. Handle JS file replacement
+          // 5. Handle JS chunk replacement
           if (chunk.isEntry) {
-            // Entry: Replace JS with loader stub
+            // Entry: Keep JS as loader stub
             const loaderBlock = getBytecodeLoaderBlock(fileName)
-            const stub = `${useStrict}\n${loaderBlock}\nmodule.exports=require("./${path.basename(fileName)}c");\n`
-            fs.writeFileSync(absPath, stub)
+            chunk.code = `${useStrict}\n${loaderBlock}\nmodule.exports=require("./${path.posix.basename(fileName)}c");\n`
           } else {
-            // Non-entry: Remove JS from bundle (only .jsc remains)
-            delete output[fileName]
+            // Non-entry: Remove JS from bundle before it is written
+            delete bundle[fileName]
           }
         }),
       )

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
-import { writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import path from 'node:path'
 
 import { build } from 'vite'
 
@@ -10,12 +11,11 @@ describe(() => {
   it('basic plugin usage', async () => {
     const plugin = bytecodePlugin('main', false, false, {
       enable: true,
-      beforeCompile(code, id) {
-        writeFileSync(id.replace(/\.cjs$/, '.origin.cjs'), code, 'utf-8')
-      },
     })
     const outDir = 'tests/dist'
-    const result = await build({
+    rmSync(outDir, { recursive: true, force: true })
+
+    await build({
       configFile: false,
       publicDir: false,
       plugins: [plugin as any],
@@ -42,20 +42,18 @@ describe(() => {
         },
       },
     })
-    expect(result).toMatchInlineSnapshot(`
-      [
-        RolldownOutputImpl {
-          "bindingOutputs": {
-            "assets": [
-              BindingOutputAsset {},
-            ],
-            "chunks": [
-              BindingOutputChunk {},
-            ],
-          },
-          "output": [native code],
-        },
-      ]
-    `)
+
+    const files = readdirSync(outDir)
+    const entryStub = readFileSync(path.join(outDir, 'test.cjs'), 'utf-8')
+    const dynamicBytecode = files.find((file) => file.startsWith('utils-') && file.endsWith('.cjsc'))
+    const dynamicSource = files.find(
+      (file) => file.startsWith('utils-') && (file.endsWith('.js') || file.endsWith('.cjs')),
+    )
+
+    expect(existsSync(path.join(outDir, '__loader__.js'))).toBe(true)
+    expect(existsSync(path.join(outDir, 'test.cjsc'))).toBe(true)
+    expect(entryStub).toContain('module.exports=require("./test.cjsc")')
+    expect(dynamicBytecode).toBeDefined()
+    expect(dynamicSource).toBeUndefined()
   })
 })

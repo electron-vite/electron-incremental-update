@@ -120,12 +120,12 @@ export function createPrepareContext(bytecodeFileNames: string[]): PrepareContex
   const requireRewrites: Record<string, string> = {}
 
   for (const fileName of bytecodeFileNames) {
-    if (!fileName.endsWith('.js')) {
+    if (!fileName.endsWith('.js') && !fileName.endsWith('.cjs')) {
       continue
     }
 
     const baseName = path.posix.basename(fileName)
-    requireRewrites[baseName] = baseName.replace(/\.js$/, '.jsc')
+    requireRewrites[baseName] = `${baseName}c`
   }
 
   return {

@@ -290,6 +290,13 @@ describe('combined transformations', () => {
     expect(result).toMatchInlineSnapshot(`"const mod = require("./chunk.jsc")"`)
   })
 
+  it('rewrite cjs require only without injecting decoder', () => {
+    const code = 'const mod = require("./chunk.cjs")'
+    const result = prepareWithFiles(code, ['chunk.cjs'])
+
+    expect(result).toMatchInlineSnapshot(`"const mod = require("./chunk.cjsc")"`)
+  })
+
   it('keep require unchanged when prepare context has no rewrite target', () => {
     const code = 'const mod = require("./chunk.js")'
     const result = prepareWithFiles(code, [])
