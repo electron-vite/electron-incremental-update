@@ -1,11 +1,9 @@
 import path from 'node:path'
 
-import { normalizePath } from 'vite'
 import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
 
 import type { Promisable } from '../../utils/type'
 import { bytecodeId, bytecodeLog } from '../constant'
-import { readableSize } from '../utils/file'
 
 import { bytecodeModuleLoaderCode } from './code'
 import {
@@ -73,8 +71,6 @@ export function bytecodePlugin(
   }
 
   let hasJsChunks = false
-  const cwd = process.cwd()
-  const bytecodeFiles: { file: string; size: number }[] = []
 
   return {
     name: bytecodeId,
@@ -100,7 +96,8 @@ export function bytecodePlugin(
         return
       }
 
-      const outputDir = outputOptions.dir ?? (outputOptions.file && path.dirname(outputOptions.file))
+      const outputDir =
+        outputOptions.dir ?? (outputOptions.file && path.dirname(outputOptions.file))
 
       // Precompute non-entry basenames ONCE (critical for prepare())
       const nonEntryBasenames = Object.values(bundle)
@@ -144,8 +141,6 @@ export function bytecodePlugin(
             source: bytecode,
             fileName: bytecodeFileName,
           })
-          const bytecodePath = `${absPath}c`
-          bytecodeFiles.push({ file: bytecodePath, size: bytecode.length })
 
           // 5. Handle JS chunk replacement
           if (chunk.isEntry) {
@@ -157,48 +152,6 @@ export function bytecodePlugin(
             delete bundle[fileName]
           }
         }),
-      )
-    },
-
-    // Optimized: Batch logging with single I/O operation
-    async closeBundle() {
-      if (bytecodeFiles.length === 0) {
-        return
-      }
-      const { styleText } = await import('node:util')
-      // Calculate relative paths and find max base name length in one pass (O(n))
-      let maxBaseLength = 0
-      const relativeFiles = bytecodeFiles.map((f) => {
-        const relPath = path.parse(path.relative(cwd, f.file))
-        const dir = normalizePath(relPath.dir)
-        const base = relPath.base
-
-        // Track max base name length for alignment
-        maxBaseLength = Math.max(maxBaseLength, base.length)
-
-        return { ...f, relPath, dir, base }
-      })
-
-      // Format each line with colors and alignment (O(n))
-      const logs = relativeFiles.map((f) => {
-        const dirDisplay = f.dir === '.' ? '' : `${styleText('dim', `${f.dir}/`)}`
-        const baseDisplay = styleText('magenta', f.base)
-        const sizeDisplay = styleText(['dim', 'bold'], readableSize(f.size))
-
-        // Align sizes by padding based on base name length
-        const padding = ' '.repeat(maxBaseLength - f.base.length)
-
-        return `${dirDisplay}${baseDisplay}${padding}  ${sizeDisplay}`
-      })
-
-      // Single join operation (O(n))
-      bytecodeLog.info(
-        [
-          `[${env}] ${bytecodeFiles.length} chunk${bytecodeFiles.length === 1 ? '' : 's'} compiled to bytecode:`,
-          ...logs,
-          '',
-        ].join('\n'),
-        { timestamp: true },
       )
     },
   }
