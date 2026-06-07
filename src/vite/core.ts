@@ -152,7 +152,14 @@ async function createElectronOptions(
   }
 
   const bytecodeOptions =
-    typeof bytecode === 'object' ? bytecode : bytecode === true ? { enable: true } : undefined
+    typeof bytecode === 'object'
+      ? {
+          ...bytecode,
+          enable: bytecode.enable ?? true,
+        }
+      : bytecode === true
+        ? { enable: true }
+        : undefined
 
   if (isESM && bytecodeOptions?.enable) {
     throw new Error(

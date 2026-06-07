@@ -16,8 +16,11 @@ import {
 
 /** Options for bytecode compilation */
 export interface BytecodeOptions {
-  /** Enable bytecode compilation */
-  enable: boolean
+  /**
+   * Enable bytecode compilation
+   * @default true
+   */
+  enable?: boolean
   /**
    * Enable in preload script. Remember to set `sandbox: false` when creating window
    */
@@ -57,7 +60,7 @@ export function bytecodePlugin(
   if (env === 'preload' && !preload) {
     if (preload === undefined) {
       bytecodeLog.warn(
-        '`bytecodePlugin` is skipped in preload. Set `preload: false` to disable this warning, or `preload: true` and set `sandbox: false` in BrowserWindow to enable bytecode in preload.',
+        '`bytecodePlugin` is skipped in preload. Set `bytecode: { preload: false }` to disable this warning, or `bytecode: { preload: true }` and set `sandbox: false` in BrowserWindow to enable bytecode in preload.',
         { timestamp: true },
       )
     }
