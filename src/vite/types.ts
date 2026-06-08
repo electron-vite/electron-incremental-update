@@ -73,6 +73,15 @@ export interface ElectronWithUpdaterOptions {
    */
   buildVersionJson?: boolean
   /**
+   * Generate and serve a local update package during dev startup.
+   *
+   * This is useful for testing update checks, simulated download progress,
+   * and restart/install behavior without publishing a remote release.
+   *
+   * @default false
+   */
+  localDevUpdate?: boolean | LocalDevUpdateOptions
+  /**
    * Addtional `external` option in `build.rolldownOptions`,
    *
    * If equals `true`,
@@ -160,6 +169,39 @@ export interface ElectronWithUpdaterOptions {
    * Updater options
    */
   updater?: UpdaterOptions
+}
+
+export interface LocalDevUpdateOptions {
+  /**
+   * Package file used for local dev update name/version.
+   *
+   * This is useful when the Electron app package is not the project root
+   * package, such as a playground or example app.
+   *
+   * @default project package.json
+   */
+  packageJsonPath?: string
+  /**
+   * Directory that contains local update resources.
+   *
+   * The generated version file is written under `{baseDir}/{versionPath}` and
+   * update archives are written as `{baseDir}/{name}-{version}.asar.gz`.
+   *
+   * @default 'release/local-update'
+   */
+  baseDir?: string
+  /**
+   * Local read chunk size for simulated download progress.
+   *
+   * @default LocalDevProvider default
+   */
+  chunkSize?: number
+  /**
+   * Delay between simulated progress chunks in milliseconds.
+   *
+   * @default LocalDevProvider default
+   */
+  chunkDelay?: number
 }
 
 export interface UpdaterOptions {

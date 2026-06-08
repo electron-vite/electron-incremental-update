@@ -40,6 +40,13 @@ export interface UpdaterOption {
    * Updater logger
    */
   logger?: Logger
+  /**
+   * Override current app version source.
+   *
+   * This is mainly used by dev tooling where the installed asar version differs
+   * from Electron's package version.
+   */
+  getAppVersion?: () => string
 }
 
 /**

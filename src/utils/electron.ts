@@ -28,6 +28,14 @@ declare const __EIU_IS_DEV__: boolean
  * type only is esmodule, transformed by vite's define
  */
 declare const __EIU_IS_ESM__: boolean
+/**
+ * type only local dev update enabled, transformed by vite's define
+ */
+declare const __EIU_LOCAL_DEV_UPDATE__: boolean
+/**
+ * type only local dev update asar path, transformed by vite's define
+ */
+declare const __EIU_LOCAL_DEV_UPDATE_ASAR_PATH__: string
 
 /**
  * Compile time dev check
@@ -47,7 +55,7 @@ export const isLinux: boolean = process.platform === 'linux'
  */
 export function getPathFromAppNameAsar(...paths: string[]): string {
   return isDev
-    ? 'DEV.asar'
+    ? path.join(__EIU_LOCAL_DEV_UPDATE_ASAR_PATH__ || 'DEV.asar', ...paths)
     : path.join(path.dirname(app.getAppPath()), `${app.name}.asar`, ...paths)
 }
 
@@ -55,7 +63,19 @@ export function getPathFromAppNameAsar(...paths: string[]): string {
  * Get app version, if is in dev, return `getEntryVersion()`
  */
 export function getAppVersion(): string {
-  return isDev ? getEntryVersion() : fs.readFileSync(getPathFromAppNameAsar('version'), 'utf-8')
+  if (!isDev) {
+    return fs.readFileSync(getPathFromAppNameAsar('version'), 'utf-8')
+  }
+
+  if (!__EIU_LOCAL_DEV_UPDATE__) {
+    return getEntryVersion()
+  }
+
+  try {
+    return fs.readFileSync(getPathFromAppNameAsar('version'), 'utf-8').trim()
+  } catch {
+    return getEntryVersion()
+  }
 }
 
 /**
@@ -103,6 +123,18 @@ export async function importNative<T = any>(moduleName: string): Promise<T> {
  * Restarts the Electron app.
  */
 export function restartApp(): void {
+  if (isDev && __EIU_LOCAL_DEV_UPDATE__ && process.send) {
+    const forceExit = setTimeout(() => app.exit(0), 5000)
+    process.once('message', (message) => {
+      if (message === 'eiu:restart-ready') {
+        clearTimeout(forceExit)
+        app.exit(0)
+      }
+    })
+    process.send('eiu:restart')
+    return
+  }
+
   app.relaunch()
   app.quit()
 }

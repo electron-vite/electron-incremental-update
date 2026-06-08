@@ -17,6 +17,11 @@ import { defaultZipFile } from '../utils/zip'
 
 import { bytecodePlugin } from './bytecode'
 import { defaultExternal, id, log } from './constant'
+import {
+  createLocalDevUpdateOnstart,
+  resolveLocalDevUpdateOptions,
+  resolveLocalDevUpdatePackage,
+} from './local-dev-update'
 import type {
   BuildAsarOptions,
   BuildVersionOptions,
@@ -29,8 +34,10 @@ import { copyAndSkipIfExist } from './utils/file'
 import { parseKeys } from './utils/key'
 
 async function resolveUpdaterOption(
+  root: string,
   pkg: PKG,
   options: UpdaterOptions = {},
+  resolveSignatureKeys: boolean = true,
 ): Promise<{
   buildAsarOption: BuildAsarOptions
   buildVersionOption: BuildVersionOptions
@@ -65,13 +72,15 @@ async function resolveUpdaterOption(
     } = {},
   } = options
 
-  const { privateKey, cert } = await parseKeys({
-    keyLength,
-    privateKeyPath,
-    certPath,
-    subject,
-    days,
-  })
+  const { privateKey, cert } = resolveSignatureKeys
+    ? await parseKeys({
+        keyLength,
+        privateKeyPath: path.resolve(root, privateKeyPath),
+        certPath: path.resolve(root, certPath),
+        subject,
+        days,
+      })
+    : { privateKey: '', cert: '' }
 
   return {
     buildAsarOption: {
@@ -136,6 +145,7 @@ async function createElectronOptions(
     external,
     updater,
     bytecode,
+    localDevUpdate,
   } = options
 
   const pkg = context.packageJson
@@ -167,9 +177,15 @@ async function createElectronOptions(
     )
   }
 
+  const resolvedLocalDevUpdate = context.isDev
+    ? resolveLocalDevUpdateOptions(context.root, localDevUpdate)
+    : undefined
+  const updatePkg = await resolveLocalDevUpdatePackage(pkg as PKG, resolvedLocalDevUpdate)
   const { buildAsarOption, buildVersionOption, entryOutDir } = await resolveUpdaterOption(
-    pkg as PKG,
+    context.root,
+    updatePkg,
     updater,
+    !resolvedLocalDevUpdate,
   )
 
   const mainFileName = `${resolveEntryName(main.files)}.${isESM ? 'mjs' : 'js'}`
@@ -187,17 +203,36 @@ async function createElectronOptions(
     chunkFileNames: `[name].${isESM ? 'mjs' : 'js'}`,
     assetFileNames: '[name].[ext]',
   }
+  const versionPath = normalizeVersionPath(normalizePath(buildVersionOption.versionPath))
+  const mainOnstart = resolvedLocalDevUpdate
+    ? createLocalDevUpdateOnstart({
+        root: context.root,
+        pkg: updatePkg,
+        buildAsarOption,
+        versionPath,
+        minimumVersion: buildVersionOption.minimumVersion,
+        localDevUpdate: resolvedLocalDevUpdate,
+        userOnstart: main.onstart,
+      })
+    : main.onstart
   const define = {
     __EIU_ASAR_BASE_NAME__: JSON.stringify(path.basename(buildAsarOption.asarOutputPath)),
     __EIU_ELECTRON_DIST_PATH__: JSON.stringify(normalizePath(buildAsarOption.electronDistPath)),
     __EIU_ENTRY_DIST_PATH__: JSON.stringify(normalizePath(entryOutDir)),
     __EIU_IS_DEV__: JSON.stringify(context.isDev),
     __EIU_IS_ESM__: JSON.stringify(isESM),
+    __EIU_LOCAL_DEV_UPDATE__: JSON.stringify(!!resolvedLocalDevUpdate),
+    __EIU_LOCAL_DEV_UPDATE_ASAR_PATH__: JSON.stringify(
+      resolvedLocalDevUpdate?.installedAsarPath ?? '',
+    ),
+    __EIU_LOCAL_DEV_UPDATE_CHUNK_DELAY__:
+      JSON.stringify(resolvedLocalDevUpdate?.chunkDelay) ?? 'undefined',
+    __EIU_LOCAL_DEV_UPDATE_CHUNK_SIZE__:
+      JSON.stringify(resolvedLocalDevUpdate?.chunkSize) ?? 'undefined',
+    __EIU_LOCAL_DEV_UPDATE_DIR__: JSON.stringify(resolvedLocalDevUpdate?.baseDir ?? ''),
     __EIU_MAIN_FILE__: JSON.stringify(mainFileName),
     __EIU_SIGNATURE_CERT__: JSON.stringify(buildVersionOption.cert),
-    __EIU_VERSION_PATH__: JSON.stringify(
-      normalizeVersionPath(normalizePath(buildVersionOption.versionPath)),
-    ),
+    __EIU_VERSION_PATH__: JSON.stringify(versionPath),
   }
 
   // Build main configuration (same as before)
@@ -205,7 +240,7 @@ async function createElectronOptions(
     {
       name: 'main',
       input: main.files,
-      onstart: main.onstart,
+      onstart: mainOnstart,
       notBundle,
       plugins: [
         isESM && esmShim(),
@@ -277,7 +312,11 @@ async function createElectronOptions(
     name: 'entry',
     input: entry.files,
     async onstart(args) {
-      await args.startup()
+      if (mainOnstart) {
+        await mainOnstart(args)
+      } else {
+        await args.startup()
+      }
     },
     notBundle,
     plugins: [

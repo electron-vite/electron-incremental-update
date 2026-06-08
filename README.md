@@ -1,108 +1,108 @@
 # Electron Incremental Update
 
-This project offers a lightweight update solution for Electron applications without using native executables.
+Lightweight incremental update tools for Electron applications built with Vite. The package provides a Vite plugin, an Electron startup wrapper, update providers, bytecode protection, and utilities for common Electron app paths.
+
+## Contents
 
 - [Electron Incremental Update](#electron-incremental-update)
-  - [Key Features](#key-features)
-    - [Dual Asar Architecture](#dual-asar-architecture)
-    - [Update Process](#update-process)
-    - [Additional Features](#additional-features)
-  - [Getting Started](#getting-started)
-    - [Install](#install)
-    - [Project Structure](#project-structure)
-    - [Setup Entry](#setup-entry)
-    - [Setup `vite.config.ts`](#setup-viteconfigts)
-    - [Modify package.json](#modify-packagejson)
-    - [Config `electron-builder`](#config-electron-builder)
-  - [Usage](#usage)
-    - [Use In Main Process](#use-in-main-process)
-      - [Alternative Provider Setup](#alternative-provider-setup)
-      - [Custom logger](#custom-logger)
-      - [Beta Channel Updates](#beta-channel-updates)
-    - [Use Native Modules](#use-native-modules)
-      - [Example](#example)
+  - [Contents](#contents)
+  - [Why](#why)
+  - [How It Works](#how-it-works)
+  - [Installation](#installation)
+  - [Quick Start](#quick-start)
+    - [Entry Process](#entry-process)
+    - [Main Process](#main-process)
+  - [Vite Configuration](#vite-configuration)
+    - [Plugin Options](#plugin-options)
+  - [Electron Builder](#electron-builder)
+  - [Runtime Usage](#runtime-usage)
+    - [Create The App](#create-the-app)
+    - [Updater API](#updater-api)
+  - [Providers](#providers)
+    - [GitHub](#github)
+      - [Default](#default)
+      - [Atom](#atom)
+      - [Api](#api)
+      - [URL Handling](#url-handling)
+    - [Local](#local)
+      - [Recommended Setup](#recommended-setup)
+      - [Custom Options](#custom-options)
+      - [Manual Provider](#manual-provider)
+      - [Testing The Local Flow](#testing-the-local-flow)
+  - [Update Artifacts](#update-artifacts)
+  - [Native Modules](#native-modules)
       - [Result in app.asar](#result-in-appasar)
-    - [NotBundle](#notbundle)
-    - [Bytecode Protection](#bytecode-protection)
-      - [Benefits](#benefits)
-      - [Limitation](#limitation)
-    - [Utils](#utils)
-      - [Electron Utilities](#electron-utilities)
-      - [Crypto Utilities](#crypto-utilities)
-      - [Zip Utilities](#zip-utilities)
+  - [Bytecode Protection](#bytecode-protection)
+  - [Development Bundling](#development-bundling)
+  - [Utilities](#utilities)
   - [Credits](#credits)
   - [License](#license)
 
-## Key Features
+## Why
 
-This solution provides a comprehensive update system for Electron applications. From v3 onward, the Vite plugin layer uses vite-plugin-electron v1 multi-env and the Vite environment API, while keeping the update workflow simple and explicit:
+Electron applications are commonly shipped as full installers. This package keeps the installer stable and updates only the application asar file, which makes update packages smaller and keeps the runtime workflow explicit.
 
-- **Vite Plugin** - Seamlessly integrates with your existing Vite build process via Environment API
-- **Startup Entry Function** - Handles application initialization and update checking
-- **Updater Class** - Manages the complete update workflow with event-driven API
-- **Utility Functions** - Helper functions for file paths, version management, and more
+Key features:
 
-### Dual Asar Architecture
+- Vite plugin based on `vite-plugin-electron/multi-env`
+- Dual asar runtime layout
+- Signed update metadata and asar verification
+- GitHub and local development providers
+- Optional V8 bytecode generation
+- Utilities for app paths, native modules, renderer loading, and Electron startup
 
-The update system uses a two-file structure for efficient incremental updates:
+## How It Works
 
-- **`app.asar`** - The application entry point that loads and initializes the updater
-- **`${electron.app.name}.asar`** - Contains your application code (main process, preload scripts, and renderer) that gets replaced during updates
+The packaged app uses two asar files:
 
-### Update Process
+- `app.asar`: the stable entry asar generated from `entry.files`
+- `${app.name}.asar`: the replaceable application asar generated from the Electron main, preload, and renderer build outputs
 
-The update workflow follows these steps:
+The update flow is:
 
-1. **Check for Updates** - Query the remote server for available updates
-2. **Download and Verify** - Download the update asar file and verify it using RSA signatures
-3. **Prepare for Update** - The application quits to prepare for the update
-4. **Apply Update** - On next launch, replace the old `${electron.app.name}.asar` with the new version and load it
+1. `createElectronApp()` starts from `app.asar`.
+2. If `${app.name}.asar.tmp` exists, it is renamed to `${app.name}.asar`.
+3. The configured main file is loaded from `${app.name}.asar`.
+4. Your main process calls `updater.checkForUpdates()`.
+5. The provider downloads `version.json`.
+6. The updater compares versions and emits `update-available` when a newer update exists.
+7. `updater.downloadUpdate()` downloads, decompresses, verifies, and writes `${app.name}.asar.tmp`.
+8. `updater.quitAndInstall()` restarts the app so the new asar can be installed on next launch.
 
-### Additional Features
-
-- **Smaller Update Packages** - Package all native modules into `app.asar` to minimize the update file size and download time [see usage](#use-native-modules)
-- **Source Code Protection** - Leverage V8 bytecode compilation to obfuscate and protect your JavaScript source code [see details](#bytecode-protection)
-
-## Getting Started
-
-### Install
-
-```sh
-npm install -D electron-incremental-update
-```
+## Installation
 
 ```sh
-yarn add -D electron-incremental-update
+npm install -D electron-incremental-update @electron/asar @babel/core
 ```
 
 ```sh
-pnpm add -D electron-incremental-update
+pnpm add -D electron-incremental-update @electron/asar @babel/core
 ```
 
-### Project Structure
-
-Base on [electron-vite-vue](https://github.com/electron-vite/electron-vite-vue)
-
+```sh
+yarn add -D electron-incremental-update @electron/asar @babel/core
 ```
+
+## Quick Start
+
+Recommended project layout:
+
+```txt
 electron
-├── entry.ts // <- entry file
+├── entry.ts
 ├── main
 │   └── index.ts
 ├── preload
 │   └── index.ts
-└── native // <- possible native modules
-    └── index.ts
+└── native
+    └── db.ts
 src
 └── ...
 ```
 
-### Setup Entry
+### Entry Process
 
-The entry is used to load the application and initialize the `Updater`
-
-`Updater` uses the `provider` to check and download the update. The built-in `GitHubProvider` is based on `BaseProvider`, which implements the [`IProvider`](./src/provider/types.ts) interface. The provider is optional, so you can set it later.
-
-in `electron/entry.ts`
+`electron/entry.ts` is the stable startup file. It creates the updater and loads the real main process from `${app.name}.asar`.
 
 ```ts
 import { createElectronApp } from 'electron-incremental-update'
@@ -110,119 +110,194 @@ import { GitHubProvider } from 'electron-incremental-update/provider'
 
 createElectronApp({
   updater: {
-    // optional, you can setup later
     provider: new GitHubProvider({
-      user: 'yourname',
-      repo: 'electron',
+      user: 'your-github-user',
+      repo: 'your-repo',
     }),
   },
   beforeStart(mainFilePath, logger) {
-    logger?.debug(mainFilePath)
+    logger?.debug(`Starting app from ${mainFilePath}`)
   },
 })
 ```
 
-- [some Github CDN resources](https://github.com/XIU2/UserScript/blob/master/GithubEnhanced-High-Speed-Download.user.js#L34)
+### Main Process
 
-### Setup `vite.config.ts`
-
-The plugin config, `main` and `preload` parts are reference from [electron-vite-vue](https://github.com/electron-vite/electron-vite-vue)
-
-- certificate will read from `process.env.UPDATER_CERT` first, if absent, read config
-- privatekey will read from `process.env.UPDATER_PK` first, if absent, read config
-
-See all config in [types](#plugin)
-
-in `vite.config.mts`
+The main entry must default-export one function wrapped with `startupWithUpdater()`.
 
 ```ts
-import { electronWithUpdater } from 'electron-incremental-update/vite'
-import { defineConfig } from 'vite'
+import { app, BrowserWindow, dialog } from 'electron'
+import { startupWithUpdater } from 'electron-incremental-update'
+import { getAppVersion, getPathFromPreload, loadPage } from 'electron-incremental-update/utils'
 
-export default defineConfig(async ({ command }) => {
-  const isBuild = command === 'build'
-  return {
-    plugins: [
-      electronWithUpdater({
-        isBuild,
-        entry: {
-          files: ['./electron/entry.ts', './electron/native/index.ts'],
-        },
-        main: {
-          files: ['./electron/main/index.ts', './electron/main/worker.ts'],
-        },
-        preload: {
-          files: './electron/preload/index.ts',
-        },
-        updater: {
-          // options
-        },
-      }),
-    ],
-    server:
-      process.env.VSCODE_DEBUG &&
-      (() => {
-        const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)
-        return {
-          host: url.hostname,
-          port: +url.port,
-        }
-      })(),
-  }
+export default startupWithUpdater(async (updater) => {
+  await app.whenReady()
+
+  const win = new BrowserWindow({
+    webPreferences: {
+      preload: getPathFromPreload('index.js'),
+    },
+  })
+
+  loadPage(win)
+
+  updater.on('update-available', async ({ version }) => {
+    const { response } = await dialog.showMessageBox({
+      type: 'info',
+      message: `Version ${version} is available. Current version is ${getAppVersion()}.`,
+      buttons: ['Download', 'Later'],
+    })
+
+    if (response === 0) {
+      await updater.downloadUpdate()
+    }
+  })
+
+  updater.on('download-progress', (info) => {
+    win.webContents.send('update-progress', info)
+  })
+
+  updater.on('update-downloaded', async () => {
+    const { response } = await dialog.showMessageBox({
+      type: 'info',
+      message: 'Update downloaded.',
+      buttons: ['Restart Now', 'Later'],
+    })
+
+    if (response === 0) {
+      updater.quitAndInstall()
+    }
+  })
+
+  updater.on('update-not-available', (code, message) => {
+    console.log(`[${code}] ${message}`)
+  })
+
+  updater.on('error', (error) => {
+    console.error(error)
+  })
+
+  await updater.checkForUpdates()
 })
 ```
 
-Or use the helper function
+## Vite Configuration
+
+Use `defineElectronConfig()` when the same Vite config owns the renderer and Electron processes.
 
 ```ts
 import { defineElectronConfig } from 'electron-incremental-update/vite'
 
 export default defineElectronConfig({
   entry: {
-    files: ['./electron/entry.ts', './electron/native/index.ts'],
+    files: './electron/entry.ts',
   },
   main: {
-    files: ['./electron/main/index.ts', './electron/main/worker.ts'],
+    files: './electron/main/index.ts',
   },
   preload: {
     files: './electron/preload/index.ts',
   },
   updater: {
-    // options
+    minimumVersion: '0.0.0',
+    paths: {
+      asarOutputPath: 'release/my-app.asar',
+      gzipPath: 'release/my-app-1.0.0.asar.gz',
+      versionPath: 'release/version.json',
+    },
   },
   renderer: {
-    server:
-      process.env.VSCODE_DEBUG &&
-      (() => {
-        const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)
-        return {
-          host: url.hostname,
-          port: +url.port,
+    server: process.env.VSCODE_DEBUG
+      ? {
+          host: '127.0.0.1',
+          port: 5173,
         }
-      })(),
+      : undefined,
   },
 })
 ```
 
-### Modify package.json
+Use `electronWithUpdater()` directly when you want to manage the renderer config yourself.
+
+```ts
+import { electronWithUpdater } from 'electron-incremental-update/vite'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  plugins: [
+    electronWithUpdater({
+      entry: {
+        files: './electron/entry.ts',
+      },
+      main: {
+        files: './electron/main/index.ts',
+      },
+      preload: {
+        files: './electron/preload/index.ts',
+      },
+    }),
+  ],
+})
+```
+
+### Plugin Options
+
+Common options:
+
+- `entry.files`: entry process input. Required.
+- `main.files`: main process input. Required.
+- `preload.files`: preload process input. Optional.
+- `sourcemap`: defaults to development or `VSCODE_DEBUG`.
+- `minify`: defaults to production builds.
+- `bytecode`: `true` or bytecode options.
+- `notBundle`: externalizes Node modules in development. Defaults to `true`.
+- `external`: additional Vite/Rolldown externals. Use `true` to externalize `dependencies`.
+- `buildVersionJson`: generates update JSON. Defaults to CI only.
+- `localDevUpdate`: generates and serves a local update package during dev startup. Use `true`
+  for defaults, or pass `{ baseDir, packageJsonPath, chunkSize, chunkDelay }`. See [Local Development](#local-development) for details.
+- `updater.minimumVersion`: minimum supported entry asar version. Defaults to `0.0.0`.
+
+
+Default output paths:
+
+- `updater.paths.asarOutputPath`: `release/${app.name}.asar`
+- `updater.paths.gzipPath`: `release/${app.name}-${version}.asar.gz`
+- `updater.paths.versionPath`: `release/version.json`
+- `updater.paths.entryOutDir`: `dist-entry`
+- `updater.paths.electronDistPath`: `dist-electron`
+- `updater.paths.rendererDistPath`: `dist`
+
+Signing keys:
+
+- `updater.keys.privateKeyPath`: defaults to `keys/private.pem`
+- `updater.keys.certPath`: defaults to `keys/cert.pem`
+- `UPDATER_PK`: overrides `privateKeyPath`
+- `UPDATER_CERT`: overrides `certPath`
+
+The plugin creates a simple self-signed certificate when the key files are missing.
+
+## Electron Builder
+
+Set `package.json#main` to the entry output file:
 
 ```json
 {
-  "main": "dist-entry/entry.js" // <- entry file path
+  "main": "dist-entry/entry.js"
 }
 ```
 
-### Config `electron-builder`
+Minimal `electron-builder.config.cjs`:
 
 ```js
 const { name } = require('./package.json')
 
 const targetFile = `${name}.asar`
+
 /**
  * @type {import('electron-builder').Configuration}
  */
 module.exports = {
-  appId: 'YourAppID',
+  appId: `org.${name}`,
   productName: name,
   files: [
     // entry files
@@ -240,181 +315,327 @@ module.exports = {
 }
 ```
 
-## Usage
+## Runtime Usage
 
-### Use In Main Process
-
-The updater should be initialized in your main process. The startup function will automatically handle update checks and installation.
-
-**NOTE: There should only be one function and should be the default export in the main index file**
-
-in `electron/main/index.ts`
+### Create The App
 
 ```ts
-import { app, dialog } from 'electron'
-import { startupWithUpdater } from 'electron-incremental-update'
-import {
-  getPathFromAppNameAsar,
-  getAppVersion,
-  getEntryVersion,
-} from 'electron-incremental-update/utils'
+import { createElectronApp } from 'electron-incremental-update'
 
-export default startupWithUpdater(async (updater) => {
-  await app.whenReady()
-
-  // Display current app information
-  console.table({
-    [`${app.name}.asar path:`]: getPathFromAppNameAsar(),
-    'app version:': getAppVersion(),
-    'entry (installer) version:': getEntryVersion(),
-    'electron version:': process.versions.electron,
-  })
-
-  // Listen for download progress
-  updater.onDownloading = ({ percent }) => {
-    console.log(`Download progress: ${percent}%`)
-  }
-
-  // Listen for available updates
-  updater.on('update-available', async ({ version }) => {
-    const { response } = await dialog.showMessageBox({
-      type: 'info',
-      buttons: ['Download', 'Later'],
-      message: `Version ${version} update available!`,
-    })
-    if (response === 0) {
-      // 0 = Download button
-      await updater.downloadUpdate()
-    }
-  })
-
-  // Handle no updates available
-  updater.on('update-not-available', (code, reason, info) => {
-    console.log('No update available:', reason)
-  })
-
-  // Handle download progress (alternative to onDownloading)
-  updater.on('download-progress', (data) => {
-    console.log('Download progress:', data)
-    // Send progress to renderer if needed
-    const [mainWindow] = BrowserWindow.getAllWindows()
-    if (mainWindow) {
-      mainWindow.webContents.send('update-progress', data)
-    }
-  })
-
-  // Handle update completion
-  updater.on('update-downloaded', () => {
-    dialog
-      .showMessageBox({
-        type: 'info',
-        message: 'Update downloaded successfully!',
-        buttons: ['Restart Now', 'Later'],
-      })
-      .then(({ response }) => {
-        if (response === 0) {
-          updater.quitAndInstall()
-        }
-      })
-  })
-
-  // Handle errors
-  updater.on('error', (error) => {
-    console.error('Update error:', error)
-    dialog.showErrorBox('Update Error', error.message || 'Failed to check for updates')
-  })
-
-  // Start checking for updates
-  updater.checkForUpdates()
+createElectronApp({
+  updater: {
+    provider,
+    receiveBeta: false,
+    logger: console,
+  },
+  onInstall(install, tempAsarPath, appNameAsarPath, logger) {
+    logger?.info(`Installing ${tempAsarPath} to ${appNameAsarPath}`)
+    install()
+  },
+  onStartError(error, logger) {
+    logger?.error('Failed to start app', error)
+  },
 })
 ```
 
-#### Alternative Provider Setup
-
-You can also change the provider dynamically:
+`updater` can also be an async factory:
 
 ```ts
-// In main.ts
-updater.provider = new GitHubProvider({
-  user: 'your-username',
+createElectronApp({
+  updater: async () => {
+    const { Updater } = await import('electron-incremental-update')
+    return new Updater({ provider })
+  },
+})
+```
+
+### Updater API
+
+```ts
+updater.provider = provider
+updater.receiveBeta = true
+updater.logger = console
+
+await updater.checkForUpdates()
+await updater.downloadUpdate()
+updater.cancel()
+updater.quitAndInstall()
+```
+
+Events:
+
+- `update-available`: emitted with update info and current app/entry versions.
+- `update-not-available`: emitted with a code, message, and optional update info.
+- `download-progress`: emitted while downloading.
+- `update-downloaded`: emitted after the temporary asar is ready.
+- `update-cancelled`: emitted after cancellation.
+- `error`: emitted with `UpdaterError`.
+
+## Providers
+
+### GitHub
+
+GitHub providers read update metadata from a repository or release and download the generated
+`{name}-{version}.asar.gz` artifact from GitHub Releases.
+
+#### Default
+
+Reads `version.json` from the repository branch and downloads the asar from GitHub Releases.
+
+```ts
+import { GitHubProvider } from 'electron-incremental-update/provider'
+
+const provider = new GitHubProvider({
+  user: 'your-github-user',
   repo: 'your-repo',
-  // Custom URL handling for mirrors or private repos
-  urlHandler: (url) => {
-    url.hostname = 'mirror.ghproxy.com'
+  branch: 'HEAD',
+})
+```
+
+Default URLs:
+
+- update JSON: `https://github.com/{user}/{repo}/raw/{branch}/{versionPath}`
+- asar: `https://github.com/{user}/{repo}/releases/download/v{version}/{name}-{version}.asar.gz`
+
+#### Atom
+
+Reads the latest release tag from `releases.atom`, then downloads the update JSON and asar from that release.
+
+```ts
+import { GitHubAtomProvider } from 'electron-incremental-update/provider'
+
+const provider = new GitHubAtomProvider({
+  user: 'your-github-user',
+  repo: 'your-repo',
+})
+```
+
+#### Api
+
+Uses the GitHub Releases API and can use a token for private repositories or higher rate limits.
+
+```ts
+import { GitHubApiProvider } from 'electron-incremental-update/provider'
+
+const provider = new GitHubApiProvider({
+  user: 'your-github-user',
+  repo: 'your-repo',
+  token: process.env.GITHUB_TOKEN,
+})
+```
+
+#### URL Handling
+
+GitHub providers support `urlHandler` for mirrors, custom gateways, or request rewriting.
+
+```ts
+const provider = new GitHubProvider({
+  user: 'your-github-user',
+  repo: 'your-repo',
+  urlHandler(url) {
+    url.hostname = 'mirror.example.com'
     url.pathname = `https://github.com${url.pathname}`
     return url
   },
 })
 ```
 
-Or use built-in `LocalDevProvider`:
+### Local
 
-- download update json from `{baseDir}/{versionPath}`
-- download update asar from `{baseDir}/{name}-{version}.asar.gz`
+Local updates are for development and manual update-flow testing. They let you test
+`checkForUpdates()`, download progress, `update-downloaded`, and restart/install behavior without
+publishing a GitHub release.
+
+Most projects should use the Vite `localDevUpdate` option instead of manually creating a
+`LocalDevProvider`.
+
+#### Recommended Setup
+
+Enable local update generation in `vite.config.ts`:
 
 ```ts
+import { electronWithUpdater } from 'electron-incremental-update/vite'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  plugins: [
+    electronWithUpdater({
+      entry: {
+        files: './electron/entry.ts',
+      },
+      main: {
+        files: './electron/main/index.ts',
+      },
+      preload: {
+        files: './electron/preload/index.ts',
+      },
+      localDevUpdate: true,
+    }),
+  ],
+})
+```
+
+When `localDevUpdate` is enabled in development:
+
+- the Vite plugin creates a local update package before Electron starts
+- `createElectronApp()` auto-configures `LocalDevProvider` when no explicit `updater.provider` is set
+- dev-only `forceUpdate` is enabled so update checks are not skipped in development
+- production builds keep the normal provider and signature behavior
+
+The default generated files are:
+
+- `release/local-update/release/version.json`
+- `release/local-update/{name}-{version}.asar.gz`
+- `DEV.asar`
+- `DEV.asar.tmp` after `downloadUpdate()`
+
+The generated update version is the next patch version from the installed local dev asar. For
+example, if `DEV.asar` contains version `1.2.3`, the generated update is `1.2.4`.
+
+#### Custom Options
+
+```ts
+export default defineConfig({
+  plugins: [
+    electronWithUpdater({
+      // ...
+      localDevUpdate: {
+        baseDir: 'release/local-update',
+        packageJsonPath: 'playground/package.json',
+        chunkSize: 32 * 1024,
+        chunkDelay: 50,
+      },
+    }),
+  ],
+})
+```
+
+Options:
+
+- `baseDir`: directory for generated local update resources. Defaults to `release/local-update`.
+- `packageJsonPath`: package metadata used for update name/version. Defaults to the project
+  `package.json`.
+- `chunkSize`: bytes per simulated download progress chunk. Defaults to `64 * 1024`.
+- `chunkDelay`: delay between progress chunks in milliseconds. Defaults to `30`.
+
+`chunkSize` must be greater than `0`, and `chunkDelay` must be greater than or equal to `0`.
+
+#### Manual Provider
+
+Use `LocalDevProvider` directly only when you need to wire local artifacts yourself.
+
+```ts
+import { LocalDevProvider } from 'electron-incremental-update/provider'
+
 const provider = new LocalDevProvider({
-  baseDir: process.cwd(),
+  baseDir: 'release/local-update',
+  chunkSize: 32 * 1024,
+  chunkDelay: 50,
 })
 ```
 
-#### Custom logger
+It reads:
 
-```ts
-updater.logger = console
+- `{baseDir}/{versionPath}`
+- `{baseDir}/{name}-{version}.asar.gz`
+
+#### Testing The Local Flow
+
+Use the [playground](./playground) as a complete local update test:
+
+```sh
+bun run play
 ```
 
-#### Beta Channel Updates
+`bun run play` builds the package first, then starts the Vite dev server and Electron playground.
 
-```ts
-updater.receiveBeta = true
+Expected flow:
+
+1. The plugin builds the Electron main, preload, and entry outputs.
+2. The plugin creates `DEV.asar` and a local update archive.
+3. `createElectronApp()` installs any existing `DEV.asar.tmp`.
+4. The app starts from `DEV.asar`.
+5. The updater checks the generated `version.json`.
+6. The playground shows an available local update.
+7. Clicking download emits simulated progress events.
+8. Clicking restart installs `DEV.asar.tmp` and restarts Electron.
+
+Explicit `updater.provider` values still take priority. If you set a provider manually, automatic
+local provider setup is skipped.
+
+## Update Artifacts
+
+The Vite plugin can generate:
+
+- `${app.name}.asar`
+- `${app.name}-${version}.asar.gz`
+- `version.json`
+
+Default `version.json` shape:
+
+```json
+{
+  "version": "1.0.0",
+  "minimumVersion": "0.0.0",
+  "signature": "...",
+  "beta": {
+    "version": "1.0.1-beta.1",
+    "minimumVersion": "0.0.0",
+    "signature": "..."
+  }
+}
 ```
 
-### Use Native Modules
+Stable releases update both the top-level fields and `beta`. Prerelease versions update only `beta`.
 
-To reduce production size, it is recommended that all the **native modules** should be set as `dependency` in `package.json` and other packages should be set as `devDependencies`. Also, `electron-rebuild` only check dependencies inside `dependency` field.
+Set `buildVersionJson: true` if you need metadata during non-CI builds.
 
-If you are using `electron-builder` to build distributions, all the native modules with its **large relevant `node_modules`** will be packaged into `app.asar` by default.
+## Native Modules
 
-Luckily, `vite` can bundle all the dependencies. Just follow the steps:
-
-1. setup `entry.files` option
-2. Manually copy the native binaries in `entry.postBuild` callback
-3. Exclude all the dependencies in `electron-builder`'s config
-4. call the native functions with `requireNative` / `importNative` in your code
-
-#### Example
-
-in `vite.config.ts`
+To keep update packages small, put native modules and their native binaries in `app.asar`, then load them from the main process with `requireNative()` or `importNative()`.
 
 ```ts
-const plugin = electronWithUpdater({
-  // options...
-  external: false, // <- bundle all native modules, handle bin files manually
-  entry: {
-    files: ['./electron/native/entry.ts', './electron/native/db.ts', './electron/native/img.ts'],
-    postBuild: ({ isBuild, copyToEntryOutputDir }) => {
-      if (!isBuild) {
-        return
-      }
-      // for better-sqlite3
-      copyToEntryOutputDir({
-        from: './node_modules/better-sqlite3/build/Release/better_sqlite3.node',
-        skipIfExist: false,
-      })
-      // for @napi-rs/image
-      const startStr = '@napi-rs+image-'
-      const fileName = readdirSync('./node_modules/.pnpm').find((p) => p.startsWith(startStr))!
-      const archName = fileName.substring(startStr.length).split('@')[0]
-      copyToEntryOutputDir({
-        from: `./node_modules/.pnpm/${fileName}/node_modules/@napi-rs/image-${archName}/image.${archName}.node`,
-      })
-    },
-  },
-})
+import { readdirSync } from 'node:fs'
+
+import { electronWithUpdater } from 'electron-incremental-update/vite'
+
+export default {
+  plugins: [
+    electronWithUpdater({
+      external: false,
+      entry: {
+        files: ['./electron/entry.ts', './electron/native/db.ts'],
+        postBuild({ isBuild, copyToEntryOutputDir }) {
+          if (!isBuild) {
+            return
+          }
+
+          copyToEntryOutputDir({
+            from: './node_modules/better-sqlite3/build/Release/better_sqlite3.node',
+            skipIfExist: false,
+          })
+
+          const packageName = readdirSync('./node_modules/.pnpm').find((name) =>
+            name.startsWith('@napi-rs+image-'),
+          )
+
+          if (packageName) {
+            const archName = packageName.substring('@napi-rs+image-'.length).split('@')[0]
+            copyToEntryOutputDir({
+              from: `./node_modules/.pnpm/${packageName}/node_modules/@napi-rs/image-${archName}/image.${archName}.node`,
+            })
+          }
+        },
+      },
+      main: {
+        files: './electron/main/index.ts',
+      },
+    }),
+  ],
+}
 ```
 
-in `electron/native/db.ts`
+Use the copied native binding from entry asar:
 
 ```ts
 import Database from 'better-sqlite3'
@@ -424,38 +645,27 @@ const db = new Database(':memory:', {
   nativeBinding: getPathFromEntryAsar('./better_sqlite3.node'),
 })
 
-export function test(): void {
-  db.exec(
-    'DROP TABLE IF EXISTS employees; ' +
-      'CREATE TABLE IF NOT EXISTS employees (name TEXT, salary INTEGER)',
-  )
-
-  db.prepare('INSERT INTO employees VALUES (:n, :s)').run({
-    n: 'James',
-    s: 5000,
+export function testDatabase(): void {
+  db.exec('CREATE TABLE IF NOT EXISTS employees (name TEXT, salary INTEGER)')
+  db.prepare('INSERT INTO employees VALUES (:name, :salary)').run({
+    name: 'James',
+    salary: 5000,
   })
-
-  const r = db.prepare('SELECT * from employees').all()
-  console.log(r)
-  // [ { name: 'James', salary: 50000 } ]
-
-  db.close()
 }
 ```
 
-in `electron/main/service.ts`
+Load native helper modules from main:
 
 ```ts
 import { importNative, requireNative } from 'electron-incremental-update/utils'
 
-// commonjs
-requireNative<typeof import('../native/db')>('db').test()
+requireNative<typeof import('../native/db')>('db').testDatabase()
 
-// esm
-importNative<typeof import('../native/db')>('db').test()
+const nativeDb = await importNative<typeof import('../native/db')>('db')
+nativeDb.testDatabase()
 ```
 
-in `electron-builder.config.js`
+For `electron-builder`, exclude `node_modules` when you have bundled dependencies manually:
 
 ```js
 module.exports = {
@@ -535,127 +745,103 @@ After: Clean 😍
 └── package.json
 ```
 
-### NotBundle
+## Bytecode Protection
 
-Faster dev startup by externalize all node modules in entry and main.
-
-Enabled by default, only works in development (`isBuild === false`).
+Bytecode protection compiles JavaScript into V8 bytecode.
 
 ```ts
 electronWithUpdater({
-  // ...
-  notBundle: false, // or options
+  bytecode: true,
+  entry: {
+    files: './electron/entry.ts',
+  },
+  main: {
+    files: './electron/main/index.ts',
+  },
 })
 ```
 
-### Bytecode Protection
+Notes:
 
-Use V8 cache to protect the source code
+- CommonJS only. Remove `"type": "module"` from `package.json` when enabling bytecode.
+- Main process bytecode is enabled by default.
+- To include preload scripts, use `bytecode: { enablePreload: true }`.
+- If preload bytecode is enabled, create the `BrowserWindow` with `sandbox: false`.
+
+## Development Bundling
+
+`notBundle` is enabled by default in development. It externalizes Node modules in entry and main builds to improve startup speed.
 
 ```ts
 electronWithUpdater({
-  // ...
-  bytecode: true, // or options
+  notBundle: false,
+  entry: {
+    files: './electron/entry.ts',
+  },
+  main: {
+    files: './electron/main/index.ts',
+  },
 })
 ```
 
-#### Benefits
+## Utilities
 
-https://electron-vite.org/guide/source-code-protection
-
-- Improve the string protection (see [original issue](https://github.com/alex8088/electron-vite/issues/552))
-- Protect all strings by default
-- Minification is allowed
-
-#### Limitation
-
-- Only support commonjs
-- Only for main process by default, if you want to use in preload script, please use `electronWithUpdater({ bytecode: { enablePreload: true } })` and set `sandbox: false` when creating window
-
-### Utils
-
-Utility functions of Electron helper, crypto, and file compression.
+Import from `electron-incremental-update/utils`:
 
 ```ts
 import {
-  // Electron utilities
-  isDev,
-  isWin,
-  isMac,
-  isLinux,
+  aesDecrypt,
+  aesEncrypt,
+  beautifyDevTools,
+  defaultIsLowerVersion,
+  defaultSignature,
+  defaultUnzipFile,
+  defaultVerifySignature,
+  defaultZipFile,
+  getAppVersion,
+  getEntryVersion,
   getPathFromAppNameAsar,
   getPathFromEntryAsar,
   getPathFromMain,
   getPathFromPreload,
   getPathFromPublic,
-  getAppVersion,
-  getEntryVersion,
-  requireNative,
+  handleUnexpectedErrors,
+  hashBuffer,
   importNative,
+  isDev,
+  isLinux,
+  isMac,
+  isWin,
+  loadPage,
+  parseVersion,
+  requireNative,
   restartApp,
   setAppUserModelId,
-  disableHWAccForWin7,
-  singleInstance,
   setPortableDataPath,
-  loadPage,
-  beautifyDevTools,
-  handleUnexpectedErrors,
-
-  // Crypto utilities
-  hashBuffer,
-  aesEncrypt,
-  aesDecrypt,
-  defaultSignature,
-  defaultVerifySignature,
-
-  // Zip utilities
-  defaultZipFile,
-  defaultUnzipFile,
+  singleInstance,
 } from 'electron-incremental-update/utils'
 ```
 
-#### Electron Utilities
+Common helpers:
 
-- **isDev** - Compile-time dev check
-- **isWin** - Check if running on Windows
-- **isMac** - Check if running on macOS
-- **isLinux** - Check if running on Linux
-- **getPathFromAppNameAsar(...paths)** - Get joined path of `${electron.app.name}.asar`
-- **getPathFromEntryAsar(...paths)** - Get joined path from entry asar
-- **getPathFromMain(...paths)** - Get joined path from main dir
-- **getPathFromPreload(...paths)** - Get joined path from preload dir
-- **getPathFromPublic(...paths)** - Get joined path from public dir
-- **getAppVersion()** - Get app version (returns entry version in dev)
-- **getEntryVersion()** - Get entry version
-- **requireNative(moduleName)** - Load native module using require from entry asar
-- **importNative(moduleName)** - Load native module using import from entry asar
-- **restartApp()** - Restart the Electron app
-- **setAppUserModelId(id)** - Fix app model ID (Windows only)
-- **disableHWAccForWin7()** - Disable hardware acceleration for Windows 7
-- **singleInstance(window)** - Keep single instance and restore window
-- **setPortableDataPath(dirName, create)** - Set userData dir to exe dir for portable apps
-- **loadPage(win, htmlFilePath)** - Load dev server URL in dev or HTML file otherwise
-- **beautifyDevTools(win, options)** - Beautify devtools font and scrollbar
-- **handleUnexpectedErrors(callback)** - Handle all unhandled errors
-
-#### Crypto Utilities
-
-- **hashBuffer(data, length)** - Hash data using SHA-256
-- **aesEncrypt(plainText, key, iv)** - Encrypt text using AES
-- **aesDecrypt(encryptedText, key, iv)** - Decrypt text using AES
-- **defaultSignature(buffer, privateKey, cert, version)** - Generate RSA signature for asar file
-- **defaultVerifySignature(buffer, version, signature, cert)** - Verify RSA signature of asar file
-
-#### Zip Utilities
-
-- **defaultZipFile(buffer)** - Compress file using brotli
-- **defaultUnzipFile(buffer)** - Decompress file using brotli
+- `getPathFromAppNameAsar(...paths)`: path inside `${app.name}.asar`.
+- `getPathFromEntryAsar(...paths)`: path inside `app.asar`.
+- `getPathFromMain(...paths)`: path inside the built main directory.
+- `getPathFromPreload(...paths)`: path inside the built preload directory.
+- `getPathFromPublic(...paths)`: path inside `public` in dev or renderer output in production.
+- `getAppVersion()`: current app version. In dev, returns the entry version.
+- `getEntryVersion()`: version from Electron app metadata.
+- `loadPage(win, htmlFilePath)`: loads `VITE_DEV_SERVER_URL` in dev or renderer HTML in production.
+- `singleInstance(window)`: restores and focuses the window on `second-instance`.
+- `setPortableDataPath(dirName, create)`: stores user data beside the executable for portable apps.
+- `requireNative(moduleName)`: loads a CommonJS native helper from entry asar.
+- `importNative(moduleName)`: imports an ES module native helper from entry asar.
 
 ## Credits
 
-- [Obsidian](https://obsidian.md/) for upgrade strategy
-- [vite-plugin-electron](https://github.com/electron-vite/vite-plugin-electron) for vite plugin
-- [electron-builder](https://github.com/electron-userland/electron-builder) for update api
+- [Obsidian](https://obsidian.md/) for the dual asar update strategy
+- [vite-plugin-electron](https://github.com/electron-vite/vite-plugin-electron) for the Vite Electron plugin foundation
+- [electron-builder](https://github.com/electron-userland/electron-builder) for Electron packaging
 - [electron-vite](https://github.com/alex8088/electron-vite) for bytecode plugin inspiration
 
 ## License

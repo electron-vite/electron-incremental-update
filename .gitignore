@@ -1,6 +1,8 @@
 dist
 dist-entry
 dist-electron
+DEV.asar
+DEV.asar.tmp
 keys
 node_modules
 release

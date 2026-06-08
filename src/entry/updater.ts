@@ -43,6 +43,7 @@ export class Updater<
 }> {
   private CERT: string
   private controller: AbortController
+  private getCurrentAppVersion: () => string
   private info?: UpdateInfoWithURL
   private tmpFilePath?: string
   private processing: boolean = false
@@ -69,6 +70,7 @@ export class Updater<
     this.receiveBeta = options.receiveBeta
     this.CERT = options.SIGNATURE_CERT || __EIU_SIGNATURE_CERT__
     this.logger = options.logger
+    this.getCurrentAppVersion = options.getAppVersion ?? getAppVersion
     this.controller = new AbortController()
 
     if (isDev && !this.logger) {
@@ -204,7 +206,7 @@ export class Updater<
       signature,
       minimumVersion,
       version,
-      appVersion: getAppVersion(),
+      appVersion: this.getCurrentAppVersion(),
       entryVersion: getEntryVersion(),
       ...rest,
     } as T

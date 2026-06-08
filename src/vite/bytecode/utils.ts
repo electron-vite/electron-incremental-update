@@ -66,8 +66,10 @@ export async function compileToBytecode(
       proc.on('error', (err_2) => reject(err_2))
 
       proc.on('close', (exitCode) => {
-        if (exitCode !== 0 || stderrChunks.length > 0) {
-          const errorMessage = Buffer.concat(stderrChunks).toString('utf-8')
+        const stdout = Buffer.concat(stdoutChunks)
+        const errorMessage = Buffer.concat(stderrChunks).toString('utf-8')
+
+        if (exitCode !== 0 || stdout.length === 0) {
           reject(
             new Error(
               `Bytecode generation process exited with code ${exitCode}. Error: ${errorMessage}`,
@@ -76,7 +78,7 @@ export async function compileToBytecode(
           return
         }
 
-        resolve(Buffer.concat(stdoutChunks))
+        resolve(stdout)
       })
     })
   } catch (e) {

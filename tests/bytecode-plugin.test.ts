@@ -45,7 +45,9 @@ describe(() => {
 
     const files = readdirSync(outDir)
     const entryStub = readFileSync(path.join(outDir, 'test.cjs'), 'utf-8')
-    const dynamicBytecode = files.find((file) => file.startsWith('utils-') && file.endsWith('.cjsc'))
+    const dynamicBytecode = files.find(
+      (file) => file.startsWith('utils-') && file.endsWith('.cjsc'),
+    )
     const dynamicSource = files.find(
       (file) => file.startsWith('utils-') && (file.endsWith('.js') || file.endsWith('.cjs')),
     )

@@ -54,7 +54,7 @@
   "scripts": {
     "dev": "tsdown --watch",
     "build": "tsdown",
-    "play": "vite",
+    "play": "bun run build && vite",
     "play:build": "vite build",
     "release": "bun run format && bun run lint && bun run test && bun run build && bumpp --all",
     "test": "bun test --preload ./tests/setup.ts",
