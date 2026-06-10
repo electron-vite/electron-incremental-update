@@ -33,6 +33,27 @@ export async function downloadUtil<T>(
 ): Promise<T> {
   await app.whenReady()
   return new Promise((resolve, reject) => {
+    const rejectUnexpectedStatus = (resp: IncomingMessage): boolean => {
+      const statusCode = resp.statusCode ?? 0
+      if (statusCode >= 200 && statusCode < 300) {
+        return false
+      }
+
+      let data = ''
+      resp.on('data', (chunk) => {
+        data += chunk
+        data = trimData(data)
+      })
+      resp.on('end', () => {
+        reject(
+          new Error(
+            `Unexpected response status ${statusCode}${resp.statusMessage ? ` ${resp.statusMessage}` : ''} from ${url}: "${data}"`,
+          ),
+        )
+      })
+      return true
+    }
+
     const request = net.request({
       cache: 'no-cache',
       headers,
@@ -43,6 +64,9 @@ export async function downloadUtil<T>(
     request.on('response', (resp) => {
       resp.on('aborted', () => reject(new Error('Aborted')))
       resp.on('error', reject)
+      if (rejectUnexpectedStatus(resp)) {
+        return
+      }
       onResponse(request, resp, resolve, reject)
     })
     request.on('error', reject)

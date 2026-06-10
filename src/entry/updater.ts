@@ -284,7 +284,9 @@ export class Updater<
     const buffer = await this.fetch('buffer')
 
     if (!buffer) {
-      return emitError('ERR_PARAM', 'No update asar file buffer')
+      this.logger?.debug('Download update end')
+      this.processing = false
+      return false
     }
 
     // verify update file

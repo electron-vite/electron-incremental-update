@@ -34,8 +34,10 @@ export async function buildAsar(
   const rPath = path.join(electronDistPath, 'renderer')
   await fs.promises.cp(rendererDistPath, rPath, { recursive: true })
   fs.writeFileSync(path.join(electronDistPath, 'version'), version)
+  await fs.promises.mkdir(path.dirname(asarOutputPath), { recursive: true })
   await createPackage(electronDistPath, asarOutputPath)
   const buf = await generateGzipFile(fs.readFileSync(asarOutputPath))
+  await fs.promises.mkdir(path.dirname(gzipPath), { recursive: true })
   fs.writeFileSync(gzipPath, buf)
   log.info(`Build update asar to '${gzipPath}' [${readableSize(buf.length)}]`, { timestamp: true })
   return buf
@@ -86,6 +88,7 @@ export async function buildUpdateJson(
     throw new Error('Invalid update json')
   }
 
+  await fs.promises.mkdir(path.dirname(versionPath), { recursive: true })
   fs.writeFileSync(versionPath, JSON.stringify(_json, null, 2))
   log.info(`build update json to '${versionPath}'`, { timestamp: true })
 }
