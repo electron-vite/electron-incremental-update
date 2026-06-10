@@ -36,9 +36,10 @@ export default defineConfig([
               minify: true,
               write: false,
             })
-            const c = result[0].chunks[1]
-            if (c?.type === 'chunk') {
-              return `export default '${c.code.replace('export{};', '')}'`
+            const chunk = result[0].chunks.find((item) => item.type === 'chunk')
+            if (chunk) {
+              const code = chunk.code.replace('export{};', '')
+              return `export default ${JSON.stringify(code)}`
             }
           },
         },

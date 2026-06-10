@@ -48,9 +48,9 @@ mock.module('electron', () => ({
   },
 }))
 
-const dir = join(__dirname, '/keys')
-const privateKeyPath = join(dir, '/keys/key.pem')
-const certPath = join(dir, '/keys/cert.pem')
+const dir = join(__dirname, 'keys')
+const privateKeyPath = join(dir, 'key.pem')
+const certPath = join(dir, 'cert.pem')
 await generateKeyPair(
   2048,
   [

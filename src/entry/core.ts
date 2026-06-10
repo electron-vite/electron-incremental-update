@@ -25,7 +25,7 @@ declare const __EIU_ASAR_BASE_NAME__: string
 /**
  * type only is esmodule, transformed by vite's define
  */
-declare const __EIU_IS_ESM__: string
+declare const __EIU_IS_ESM__: boolean
 /**
  * type only local dev update enabled, transformed by vite's define
  */

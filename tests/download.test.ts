@@ -46,7 +46,7 @@ describe('download utils', () => {
         new AbortController().signal,
       ),
     ).rejects.toThrow(
-      'Unexpected response status 404 Not Found from https://example.com/release/version.json',
+      'Unexpected response status 404 Not Found from https://example.com/release/version.json: "<html>missing update json</html>"',
     )
     globalThis.__EIU_TEST_NET_REQUEST_FACTORY__ = undefined
   })

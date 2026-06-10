@@ -25,9 +25,9 @@ describe('test aes', () => {
   })
 })
 describe('test verify', async () => {
-  const dir = join(__dirname, '/keys')
-  const privateKeyPath = join(dir, '/keys/key.pem')
-  const certPath = join(dir, '/keys/cert.pem')
+  const dir = join(__dirname, 'keys')
+  const privateKeyPath = join(dir, 'key.pem')
+  const certPath = join(dir, 'cert.pem')
   const buffer = Buffer.from(plain, 'utf-8')
   const version = '0.0.0-alpha1'
 
