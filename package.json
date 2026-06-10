@@ -12,7 +12,7 @@
   "author": "subframe7536",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/subframe7536/electron-incremental-update.git"
+    "url": "git+https://github.com/electron-vite/electron-incremental-update.git"
   },
   "files": [
     "dist"
