@@ -1,10 +1,9 @@
-import type { DownloadingInfo, UpdateInfoWithURL, UpdateJSONWithURL, URLHandler } from '../types'
-import type { Promisable } from '@subframe7536/type-utils'
-
 import { URL } from 'node:url'
 
 import { defaultDownloadAsar, defaultDownloadUpdateJSON } from '../../utils/download'
+import type { Promisable } from '../../utils/type'
 import { BaseProvider } from '../base'
+import type { DownloadingInfo, UpdateInfoWithURL, VersionJSON, URLHandler } from '../types'
 
 export interface BaseGitHubProviderOptions {
   /**
@@ -31,10 +30,10 @@ export interface BaseGitHubProviderOptions {
   urlHandler?: URLHandler
 }
 
-export abstract class BaseGitHubProvider<T extends BaseGitHubProviderOptions = BaseGitHubProviderOptions> extends BaseProvider {
-  constructor(
-    protected options: T,
-  ) {
+export abstract class BaseGitHubProvider<
+  T extends BaseGitHubProviderOptions = BaseGitHubProviderOptions,
+> extends BaseProvider {
+  constructor(protected options: T) {
     super()
   }
 
@@ -46,27 +45,29 @@ export abstract class BaseGitHubProvider<T extends BaseGitHubProviderOptions = B
     this.options.urlHandler = handler
   }
 
-  protected async parseURL(extraPath: string): Promise<string> {
-    const url = new URL(
-      `/${this.options.user}/${this.options.repo}/${extraPath}`,
-      'https://github.com',
-    )
-    return (await this.urlHandler?.(url) || url).toString()
+  protected async parseURL(pathOrURL: string): Promise<string> {
+    const url = URL.canParse(pathOrURL)
+      ? new URL(pathOrURL)
+      : new URL(`/${this.options.user}/${this.options.repo}/${pathOrURL}`, 'https://github.com')
+    return ((await this.urlHandler?.(url)) || url).toString()
   }
 
   protected abstract getHeaders(accept: string): Record<string, string>
 
   protected abstract getVersionURL(versionPath: string, signal: AbortSignal): Promisable<string>
 
-  public async downloadJSON(name: string, versionPath: string, signal: AbortSignal): Promise<UpdateJSONWithURL> {
+  public async downloadJSON(
+    name: string,
+    versionPath: string,
+    signal: AbortSignal,
+  ): Promise<VersionJSON> {
     const { beta, version, ...info } = await defaultDownloadUpdateJSON(
       await this.parseURL(await this.getVersionURL(versionPath, signal)),
       this.getHeaders('json'),
       signal,
     )
-    const getURL = (ver: string): Promise<string> => this.parseURL(
-      `releases/download/v${ver}/${name}-${ver}.asar.gz`,
-    )
+    const getURL = (ver: string): Promise<string> =>
+      this.parseURL(`releases/download/v${ver}/${name}-${ver}.asar.gz`)
 
     return {
       ...info,

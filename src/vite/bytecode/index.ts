@@ -1,218 +1,161 @@
-import type { Promisable } from '@subframe7536/type-utils'
-import type { Plugin, ResolvedConfig } from 'vite'
-
-import fs from 'node:fs'
 import path from 'node:path'
 
-import MagicString from 'magic-string'
-import { createFilter, normalizePath } from 'vite'
+import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
 
+import type { Promisable } from '../../utils/type'
 import { bytecodeId, bytecodeLog } from '../constant'
-import { readableSize } from '../utils'
+
 import { bytecodeModuleLoaderCode } from './code'
 import {
   bytecodeModuleLoader,
   compileToBytecode,
-  convertArrowFunctionAndTemplate,
-  convertLiteral,
-  toRelativePath,
+  createPrepareContext,
+  prepare,
   useStrict,
 } from './utils'
 
+/** Options for bytecode compilation */
 export interface BytecodeOptions {
-  enable: boolean
+  /**
+   * Enable bytecode compilation
+   * @default true
+   */
+  enable?: boolean
   /**
    * Enable in preload script. Remember to set `sandbox: false` when creating window
    */
   preload?: boolean
   /**
-   * Custom electron binary path
+   * Custom electron binary path for bytecode generation
    */
   electronPath?: string
   /**
    * Before transformed code compile function. If return `Falsy` value, it will be ignored
-   * @param code transformed code
-   * @param id file path
+   * @param code - Transformed code
+   * @param id - File path
+   * @returns Transformed code or falsy to ignore
    */
   beforeCompile?: (code: string, id: string) => Promisable<string | null | undefined | void>
 }
 
 function getBytecodeLoaderBlock(chunkFileName: string): string {
-  return `require("${toRelativePath(bytecodeModuleLoader, normalizePath(chunkFileName))}");`
+  const loaderFileName = path.posix.relative(
+    path.posix.dirname(chunkFileName),
+    bytecodeModuleLoader,
+  )
+  return `require("${loaderFileName.startsWith('.') ? loaderFileName : `./${loaderFileName}`}")`
 }
 
-/**
- * Compile to v8 bytecode to protect source code.
- */
 export function bytecodePlugin(
-  env: 'preload' | 'main',
+  env: 'preload' | 'main' | 'entry',
+  minify: boolean,
+  isESM: boolean,
   options: BytecodeOptions,
-): Plugin | null {
-  const {
-    enable,
-    preload = false,
-    electronPath,
-    beforeCompile,
-  } = options
-
+): MultiEnvElectronOptions['plugins'] | null {
+  const { enable, preload = false, electronPath, beforeCompile } = options
   if (!enable) {
     return null
   }
 
-  if (!preload && env === 'preload') {
-    bytecodeLog.warn('`bytecodePlugin` is skiped in preload. To enable in preload, please manually set the "enablePreload" option to true and set `sandbox: false` when creating the window', { timestamp: true })
+  if (env === 'preload' && !preload) {
+    if (preload === undefined) {
+      bytecodeLog.warn(
+        '`bytecodePlugin` is skipped in preload. Set `bytecode: { preload: false }` to disable this warning, or `bytecode: { preload: true }` and set `sandbox: false` in BrowserWindow to enable bytecode in preload.',
+        { timestamp: true },
+      )
+    }
     return null
   }
 
-  const filter = createFilter(/\.(m?[jt]s|[jt]sx)$/)
+  if (isESM) {
+    throw new Error(
+      '`bytecodePlugin` requires CommonJS. Set "type": "commonjs" in package.json and use .cjs extensions',
+    )
+  }
 
-  let config: ResolvedConfig
-  let bytecodeRequired = false
-  let bytecodeFiles: { name: string, size: number }[] = []
+  let hasJsChunks = false
 
   return {
-    name: `${bytecodeId}-${env}`,
-    apply: 'build',
-    enforce: 'post',
-    configResolved(resolvedConfig) {
-      config = resolvedConfig
-    },
-    transform(code, id) {
-      if (!filter(id)) {
-        return convertLiteral(code, !!config.build.sourcemap)
-      }
-    },
-    generateBundle(options): void {
-      if (options.format !== 'es' && bytecodeRequired) {
+    name: bytecodeId,
+
+    async generateBundle(outputOptions, bundle) {
+      // Only emit loader if actual JS chunks exist (skip if only assets)
+      hasJsChunks = Object.values(bundle).some(
+        (file) =>
+          file.type === 'chunk' &&
+          (file.fileName.endsWith('.js') || file.fileName.endsWith('.cjs')),
+      )
+
+      if (hasJsChunks) {
         this.emitFile({
           type: 'asset',
           source: `${bytecodeModuleLoaderCode}\n`,
-          name: 'Bytecode Loader File',
+          name: 'Bytecode Loader',
           fileName: bytecodeModuleLoader,
         })
       }
-    },
-    renderChunk(code, chunk, options) {
-      if (options.format === 'es') {
-        bytecodeLog.warn(
-          '`bytecodePlugin` does not support ES module, please set "build.rollupOptions.output.format" option to "cjs"',
-          { timestamp: true },
-        )
-        return null
-      }
-      if (chunk.type === 'chunk') {
-        bytecodeRequired = true
-        return convertArrowFunctionAndTemplate(code)
-      }
-      return null
-    },
-    async writeBundle(options, output) {
-      if (options.format === 'es' || !bytecodeRequired) {
+
+      if (!hasJsChunks) {
         return
       }
 
-      const outDir = options.dir!
+      const outputDir =
+        outputOptions.dir ?? (outputOptions.file && path.dirname(outputOptions.file))
 
-      bytecodeFiles = []
+      // Precompute non-entry basenames ONCE (critical for prepare())
+      const nonEntryBasenames = Object.values(bundle)
+        .filter(
+          (f): f is (typeof bundle)[string] & { type: 'chunk' } => f.type === 'chunk' && !f.isEntry,
+        )
+        .map((c) => path.posix.basename(c.fileName))
+      const prepareContext = createPrepareContext(nonEntryBasenames)
 
-      const bundles = Object.keys(output)
-      const chunks = Object.values(output).filter(
-        chunk => chunk.type === 'chunk' && chunk.fileName !== bytecodeModuleLoader,
-      ) as any[]
-      const bytecodeChunks = chunks.map(chunk => chunk.fileName)
-      const nonEntryChunks = chunks.filter(chunk => !chunk.isEntry).map(chunk => path.basename(chunk.fileName))
-
-      const pattern = nonEntryChunks.map(chunk => `(${chunk})`).join('|')
-      const bytecodeRE = pattern ? new RegExp(`require\\(\\S*(?=(${pattern})\\S*\\))`, 'g') : null
-
+      // Process chunks concurrently with controlled parallelism
       await Promise.all(
-        bundles.map(async (name) => {
-          const chunk = output[name]
-          if (chunk.type === 'chunk') {
-            let _code = chunk.code
-            const chunkFilePath = path.resolve(outDir, name)
+        Object.entries(bundle).map(async ([fileName, item]) => {
+          if (item.type !== 'chunk' || fileName === bytecodeModuleLoader) {
+            return
+          }
 
-            if (beforeCompile) {
-              const cbResult = await beforeCompile(_code, chunkFilePath)
-              if (cbResult) {
-                _code = cbResult
-              }
+          const chunk = item as any
+          const bytecodeFileName = `${fileName}c`
+          const absPath = outputDir ? path.join(outputDir, fileName) : fileName
+
+          // 1. Prepare code (minify + runtime cleanup)
+          let code = prepare(chunk.code, minify, prepareContext)?.code || chunk.code
+
+          // 2. Optional transformation hook
+          if (beforeCompile) {
+            const hookResult = await beforeCompile(code, absPath)
+            if (hookResult) {
+              code = hookResult
             }
+          }
 
-            if (bytecodeRE && _code.match(bytecodeRE)) {
-              let match: RegExpExecArray | null
-              const s = new MagicString(_code)
-              // eslint-disable-next-line no-cond-assign
-              while ((match = bytecodeRE.exec(_code))) {
-                const [prefix, chunkName] = match
-                const len = prefix.length + chunkName.length
-                s.overwrite(match.index, match.index + len, `${prefix + chunkName}c`, {
-                  contentOnly: true,
-                })
-              }
-              _code = s.toString()
-            }
+          // 3. Compile to bytecode (critical path)
+          const bytecode = await compileToBytecode(code, absPath, electronPath)
+          if (typeof bytecode === 'string') {
+            throw new TypeError(bytecode)
+          }
 
-            if (bytecodeChunks.includes(name)) {
-              const bytecodeBuffer = await compileToBytecode(_code, electronPath)
-              fs.writeFileSync(`${chunkFilePath}c`, bytecodeBuffer)
+          // 4. Emit bytecode file (.jsc/.cjsc)
+          this.emitFile({
+            type: 'asset',
+            source: bytecode,
+            fileName: bytecodeFileName,
+          })
 
-              if (chunk.isEntry) {
-                const bytecodeLoaderBlock = getBytecodeLoaderBlock(chunk.fileName)
-                const bytecodeModuleBlock = `require("./${`${path.basename(name)}c`}");`
-                const code = `${useStrict}\n${bytecodeLoaderBlock}\nmodule.exports=${bytecodeModuleBlock}\n`
-                fs.writeFileSync(chunkFilePath, code)
-              } else {
-                fs.unlinkSync(chunkFilePath)
-              }
-
-              bytecodeFiles.push({ name: `${name}c`, size: bytecodeBuffer.length })
-            } else {
-              if (chunk.isEntry) {
-                let hasBytecodeMoudle = false
-                const idsToHandle = new Set([...chunk.imports, ...chunk.dynamicImports])
-
-                for (const moduleId of idsToHandle) {
-                  if (bytecodeChunks.includes(moduleId)) {
-                    hasBytecodeMoudle = true
-                    break
-                  }
-                  const moduleInfo = this.getModuleInfo(moduleId)
-                  if (moduleInfo && !moduleInfo.isExternal) {
-                    const { importers, dynamicImporters } = moduleInfo
-                    for (const importerId of importers) {
-                      idsToHandle.add(importerId)
-                    }
-                    for (const importerId of dynamicImporters) {
-                      idsToHandle.add(importerId)
-                    }
-                  }
-                }
-
-                const bytecodeLoaderBlock = getBytecodeLoaderBlock(chunk.fileName)
-                _code = hasBytecodeMoudle
-                  ? _code.replace(
-                      new RegExp(`(${useStrict})|("use strict";)`),
-                      `${useStrict}\n${bytecodeLoaderBlock}`,
-                    )
-                  : _code
-              }
-              fs.writeFileSync(chunkFilePath, _code)
-            }
+          // 5. Handle JS chunk replacement
+          if (chunk.isEntry) {
+            // Entry: Keep JS as loader stub
+            const loaderBlock = getBytecodeLoaderBlock(fileName)
+            chunk.code = `${useStrict}\n${loaderBlock}\nmodule.exports=require("./${path.posix.basename(fileName)}c");\n`
+          } else {
+            // Non-entry: Remove JS from bundle before it is written
+            delete bundle[fileName]
           }
         }),
       )
-    },
-    closeBundle() {
-      const outDir = `${normalizePath(path.relative(config.root, path.resolve(config.root, config.build.outDir)))}/`
-      bytecodeFiles.forEach((file) => {
-        bytecodeLog.info(
-          `${outDir}${file.name} [${readableSize(file.size)}]`,
-          { timestamp: true },
-        )
-      })
-      bytecodeLog.info(`${bytecodeFiles.length} bundles compiled into bytecode.`, { timestamp: true })
-      bytecodeFiles = []
     },
   }
 }

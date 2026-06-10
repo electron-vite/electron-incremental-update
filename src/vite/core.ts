@@ -1,128 +1,128 @@
-import type { ElectronWithUpdaterOptions, PKG } from './option'
-import type { AnyFunction } from '@subframe7536/type-utils'
-import type { ChildProcessWithoutNullStreams, StdioOptions } from 'node:child_process'
-import type { BuildOptions, InlineConfig, PluginOption } from 'vite'
-import type { ElectronSimpleOptions } from 'vite-plugin-electron/simple'
-
 import fs from 'node:fs'
 import path from 'node:path'
 
 import { isCI } from 'ci-info'
-import { getPackageInfoSync, loadPackageJSON } from 'local-pkg'
+import type { EnvironmentOptions, Plugin } from 'vite'
 import { mergeConfig, normalizePath } from 'vite'
-import { startup } from 'vite-plugin-electron'
-import { notBundle } from 'vite-plugin-electron/plugin'
-import ElectronSimple from 'vite-plugin-electron/simple'
+import { electronPluginFactory } from 'vite-plugin-electron/multi-env'
+import type {
+  MultiEnvElectronOptions,
+  ElectronFactoryContext,
+} from 'vite-plugin-electron/multi-env'
+import { esmShim } from 'vite-plugin-electron/plugin'
 
-import { buildAsar, buildEntry, buildUpdateJson } from './build'
+import { defaultSignature } from '../utils/crypto'
+import { defaultVersionJsonGenerator } from '../utils/version'
+import { defaultZipFile } from '../utils/zip'
+
 import { bytecodePlugin } from './bytecode'
-import { bytecodeLog, id, log } from './constant'
-import { esm } from './esm/index'
-import { parseOptions } from './option'
-import { copyAndSkipIfExist } from './utils'
+import { defaultExternal, id, log } from './constant'
+import {
+  createLocalDevUpdateOnstart,
+  resolveLocalDevUpdateOptions,
+  resolveLocalDevUpdatePackage,
+} from './local-dev-update'
+import type {
+  BuildAsarOptions,
+  BuildVersionOptions,
+  ElectronWithUpdaterOptions,
+  PKG,
+  UpdaterOptions,
+} from './types'
+import { buildAsar, buildUpdateJson } from './utils/build'
+import { copyAndSkipIfExist } from './utils/file'
+import { parseKeys } from './utils/key'
 
-type StartupFn = NonNullable<NonNullable<ElectronSimpleOptions['main']>['onstart']>
+async function resolveUpdaterOption(
+  root: string,
+  pkg: PKG,
+  options: UpdaterOptions = {},
+  resolveSignatureKeys: boolean = true,
+): Promise<{
+  buildAsarOption: BuildAsarOptions
+  buildVersionOption: BuildVersionOptions
+  entryOutDir: string
+}> {
+  const {
+    minimumVersion = '0.0.0',
+    paths: {
+      asarOutputPath = `release/${pkg.name}.asar`,
+      gzipPath = `release/${pkg.name}-${pkg.version}.asar.gz`,
+      entryOutDir = 'dist-entry',
+      electronDistPath = 'dist-electron',
+      rendererDistPath = 'dist',
+      versionPath = 'release/version.json',
+    } = {},
+    keys: {
+      privateKeyPath = 'keys/private.pem',
+      certPath = 'keys/cert.pem',
+      keyLength = 2048,
+      certInfo: {
+        subject = {
+          commonName: pkg.name,
+          organizationName: `org.${pkg.name}`,
+        },
+        days = 3650,
+      } = {},
+    } = {},
+    overrideGenerator: {
+      generateGzipFile = defaultZipFile,
+      generateSignature = defaultSignature,
+      generateUpdateJson = defaultVersionJsonGenerator,
+    } = {},
+  } = options
 
-/**
- * Startup function for debug
- * @see {@link https://github.com/electron-vite/electron-vite-vue/blob/main/vite.config.ts electron-vite-vue template}
- * @example
- * import { debugStartup, buildElectronPluginOptions } from 'electron-incremental-update/vite'
- * const options = buildElectronPluginOptions({
- *   // ...
- *   main: {
- *     // ...
- *     startup: debugStartup
- *   },
- * })
- */
-export const debugStartup: StartupFn = async (args) => {
-  if (process.env.VSCODE_DEBUG) {
-    // For `.vscode/.debug.script.mjs`
-    console.log('[startup] Electron App')
-  } else {
-    await args.startup()
+  const { privateKey, cert } = resolveSignatureKeys
+    ? await parseKeys({
+        keyLength,
+        privateKeyPath: path.resolve(root, privateKeyPath),
+        certPath: path.resolve(root, certPath),
+        subject,
+        days,
+      })
+    : { privateKey: '', cert: '' }
+
+  return {
+    buildAsarOption: {
+      version: pkg.version,
+      asarOutputPath,
+      gzipPath,
+      electronDistPath,
+      rendererDistPath,
+      generateGzipFile,
+    },
+    buildVersionOption: {
+      version: pkg.version,
+      minimumVersion,
+      privateKey,
+      cert,
+      versionPath,
+      generateSignature,
+      generateUpdateJson,
+    },
+    entryOutDir,
   }
 }
 
-/**
- * Startup function to filter unwanted error message
- * @see {@link https://github.com/electron/electron/issues/46903#issuecomment-2848483520 reference}
- * @example
- * import { filterErrorMessageStartup, buildElectronPluginOptions } from 'electron-incremental-update/vite'
- * const options = buildElectronPluginOptions({
- *   // ...
- *   main: {
- *     // ...
- *     startup: args => filterErrorMessageStartup(
- *       args,
- *       // ignore error message when function returns false
- *       msg => !/"code":-32601/.test(msg)
- *     )
- *   },
- * })
- */
-export async function filterErrorMessageStartup(
-  args: Parameters<StartupFn>[0],
-  filter: (msg: string) => boolean,
-): Promise<void> {
-  // https://github.com/electron-vite/vite-plugin-electron/pull/283
-  // reserve file descriptor 3 for Chromium; put Node IPC on file descriptor 4
-  const stdio: StdioOptions = process.platform === 'linux'
-    ? ['inherit', 'pipe', 'pipe', 'ignore', 'ipc']
-    : ['inherit', 'pipe', 'pipe', 'ipc']
-  await args.startup(undefined, { stdio })
-  const elec = (process as unknown as { electronApp: ChildProcessWithoutNullStreams }).electronApp
-  elec.stdout.addListener('data', (data: Buffer) => {
-    console.log(data.toString().trimEnd())
-  })
-  elec.stderr.addListener('data', (data: Buffer) => {
-    const message = data.toString()
-    if (filter(message)) {
-      console.error(message)
-    }
-  })
-}
-
-/**
- * Startup function util to fix Windows terminal charset
- * @example
- * import { debugStartup, fixWinCharEncoding, buildElectronPluginOptions } from 'electron-incremental-update/vite'
- * const options = buildElectronPluginOptions({
- *   // ...
- *   main: {
- *     // ...
- *     startup: fixWinCharEncoding(debugStartup)
- *   },
- * })
- */
-export function fixWinCharEncoding<T extends AnyFunction>(fn: T): T {
-  return (async (...args) => {
-    if (process.platform === 'win32') {
-      (await import('node:child_process')).spawnSync('chcp', ['65001'])
-    }
-    await fn(...args)
-  }) as T
-}
-
-function getMainFileBaseName(options: ElectronWithUpdaterOptions['main']['files']): string {
-  let mainFilePath
-  if (typeof options === 'string') {
-    mainFilePath = path.basename(options)
-  } else if (Array.isArray(options)) {
-    mainFilePath = path.basename(options[0])
-  } else {
-    const name = options?.index ?? options?.main
-    if (!name) {
-      throw new Error(`\`options.main.files\` (${options}) must have "index" or "main" key, like \`{ index: "./electron/main/index.ts" }\``)
-    }
-    mainFilePath = options?.index ? 'index.js' : 'main.js'
+function resolveEntryName(files: ElectronWithUpdaterOptions['main']['files']): string {
+  if (typeof files === 'string') {
+    return path.parse(files).name
   }
-  log.info(`Using "${mainFilePath}" as main file`, { timestamp: true })
-  return mainFilePath.replace(/\.[cm]?ts$/, '.js')
+  if (Array.isArray(files)) {
+    const [firstInput] = files
+    if (!firstInput) {
+      throw new Error('`options.main.files` must contain at least one main entry')
+    }
+    return path.parse(firstInput).name
+  }
+  const firstEntry = Object.entries(files)[0]
+  if (!firstEntry) {
+    throw new Error('`options.main.files` must contain at least one main entry')
+  }
+  return firstEntry[0]
 }
 
-function parseVersionPath(versionPath: string): string {
+function normalizeVersionPath(versionPath: string): string {
   versionPath = normalizePath(versionPath)
   if (!versionPath.startsWith('./')) {
     versionPath = `./${versionPath}`
@@ -130,21 +130,274 @@ function parseVersionPath(versionPath: string): string {
   return new URL(versionPath, 'file://').pathname.slice(1)
 }
 
+async function createElectronOptions(
+  options: ElectronWithUpdaterOptions,
+  context: ElectronFactoryContext,
+): Promise<MultiEnvElectronOptions[]> {
+  const {
+    entry,
+    main,
+    preload,
+    sourcemap = context.isDev || !!process.env.VSCODE_DEBUG,
+    minify = !context.isDev,
+    buildVersionJson,
+    notBundle = true,
+    external,
+    updater,
+    bytecode,
+    localDevUpdate,
+  } = options
+
+  const pkg = context.packageJson
+  if (!pkg || !pkg.version || !pkg.name || !pkg.main) {
+    throw new Error('package.json not found or invalid, must contains version, name and main field')
+  }
+
+  const isESM = pkg.type === 'module'
+  const finalExternal = [...defaultExternal]
+  if (external === true) {
+    finalExternal.push(...Object.keys(pkg.dependencies || {}))
+  } else if (Array.isArray(external)) {
+    finalExternal.push(...external)
+  }
+
+  const bytecodeOptions =
+    typeof bytecode === 'object'
+      ? {
+          ...bytecode,
+          enable: bytecode.enable ?? true,
+        }
+      : bytecode === true
+        ? { enable: true }
+        : undefined
+
+  if (isESM && bytecodeOptions?.enable) {
+    throw new Error(
+      '`bytecodePlugin` does not support ES module, please remove "type": "module" in package.json',
+    )
+  }
+
+  const resolvedLocalDevUpdate = context.isDev
+    ? resolveLocalDevUpdateOptions(context.root, localDevUpdate)
+    : undefined
+  const updatePkg = await resolveLocalDevUpdatePackage(pkg as PKG, resolvedLocalDevUpdate)
+  const { buildAsarOption, buildVersionOption, entryOutDir } = await resolveUpdaterOption(
+    context.root,
+    updatePkg,
+    updater,
+    !resolvedLocalDevUpdate,
+  )
+
+  const mainFileName = `${resolveEntryName(main.files)}.${isESM ? 'mjs' : 'js'}`
+  log.info(`Using "${mainFileName}" as main file`, { timestamp: true })
+
+  log.info(`Clear cache files`, { timestamp: true })
+  await Promise.all(
+    [buildAsarOption.rendererDistPath, buildAsarOption.electronDistPath, entryOutDir].map((p) =>
+      fs.promises.rm(path.resolve(context.root, p), { recursive: true, force: true }),
+    ),
+  ).catch(() => {})
+
+  const outputNames = {
+    entryFileNames: `[name].${isESM ? 'mjs' : 'js'}`,
+    chunkFileNames: `[name].${isESM ? 'mjs' : 'js'}`,
+    assetFileNames: '[name].[ext]',
+  }
+  const versionPath = normalizeVersionPath(normalizePath(buildVersionOption.versionPath))
+  const mainOnstart = resolvedLocalDevUpdate
+    ? createLocalDevUpdateOnstart({
+        root: context.root,
+        pkg: updatePkg,
+        buildAsarOption,
+        versionPath,
+        minimumVersion: buildVersionOption.minimumVersion,
+        localDevUpdate: resolvedLocalDevUpdate,
+        userOnstart: main.onstart,
+      })
+    : main.onstart
+  const define = {
+    __EIU_ASAR_BASE_NAME__: JSON.stringify(path.basename(buildAsarOption.asarOutputPath)),
+    __EIU_ELECTRON_DIST_PATH__: JSON.stringify(normalizePath(buildAsarOption.electronDistPath)),
+    __EIU_ENTRY_DIST_PATH__: JSON.stringify(normalizePath(entryOutDir)),
+    __EIU_IS_DEV__: JSON.stringify(context.isDev),
+    __EIU_IS_ESM__: JSON.stringify(isESM),
+    __EIU_LOCAL_DEV_UPDATE__: JSON.stringify(!!resolvedLocalDevUpdate),
+    __EIU_LOCAL_DEV_UPDATE_ASAR_PATH__: JSON.stringify(
+      resolvedLocalDevUpdate?.installedAsarPath ?? '',
+    ),
+    __EIU_LOCAL_DEV_UPDATE_CHUNK_DELAY__:
+      JSON.stringify(resolvedLocalDevUpdate?.chunkDelay) ?? 'undefined',
+    __EIU_LOCAL_DEV_UPDATE_CHUNK_SIZE__:
+      JSON.stringify(resolvedLocalDevUpdate?.chunkSize) ?? 'undefined',
+    __EIU_LOCAL_DEV_UPDATE_DIR__: JSON.stringify(resolvedLocalDevUpdate?.baseDir ?? ''),
+    __EIU_MAIN_FILE__: JSON.stringify(mainFileName),
+    __EIU_SIGNATURE_CERT__: JSON.stringify(buildVersionOption.cert),
+    __EIU_VERSION_PATH__: JSON.stringify(versionPath),
+  }
+
+  // Build main configuration (same as before)
+  const _electronOptions: MultiEnvElectronOptions[] = [
+    {
+      name: 'main',
+      input: main.files,
+      onstart: mainOnstart,
+      notBundle,
+      plugins: [
+        isESM && esmShim(),
+        bytecodeOptions && bytecodePlugin('main', minify, isESM, bytecodeOptions),
+      ],
+      options: mergeConfig<EnvironmentOptions, EnvironmentOptions>(
+        {
+          build: {
+            sourcemap,
+            minify,
+            outDir: `${buildAsarOption.electronDistPath}/main`,
+            rolldownOptions: {
+              external: finalExternal,
+              output: {
+                format: isESM ? 'es' : 'cjs',
+                polyfillRequire: isESM,
+                ...outputNames,
+              },
+            },
+          },
+          define,
+        },
+        main.options ?? {},
+      ),
+    },
+  ]
+
+  // Build preload configuration
+  if (preload?.files) {
+    _electronOptions.push({
+      name: 'preload',
+      onstart(args) {
+        // Notify the Renderer-Process to reload the page when the Preload-Scripts build is complete
+        args.reload()
+      },
+      notBundle,
+      input: preload.files,
+      plugins: [
+        isESM && esmShim(),
+        bytecodeOptions && bytecodePlugin('preload', minify, isESM, bytecodeOptions),
+      ],
+      options: mergeConfig<EnvironmentOptions, EnvironmentOptions>(
+        {
+          build: {
+            sourcemap: sourcemap ? 'inline' : undefined,
+            minify,
+            outDir: `${buildAsarOption.electronDistPath}/preload`,
+            rolldownOptions: {
+              external: finalExternal,
+              output: {
+                // preload should use cjs format and not split
+                format: 'cjs',
+                codeSplitting: false,
+                // Keep core.ts configuration
+                polyfillRequire: false,
+                // File naming from simple.ts (based on esmodule detection)
+                ...outputNames,
+              },
+            },
+          },
+          define,
+        },
+        preload?.options ?? {},
+      ),
+    })
+  }
+
+  _electronOptions.push({
+    name: 'entry',
+    input: entry.files,
+    async onstart(args) {
+      if (mainOnstart) {
+        await mainOnstart(args)
+      } else {
+        await args.startup()
+      }
+    },
+    notBundle,
+    plugins: [
+      isESM && esmShim(),
+      bytecodeOptions && bytecodePlugin('entry', minify, isESM, bytecodeOptions),
+      {
+        name: `${id}:entry`,
+        async closeBundle() {
+          log.info(`Build entry to '${entryOutDir}'`, { timestamp: true })
+          await entry.postBuild?.({
+            isBuild: !context.isDev,
+            getPathFromEntryOutputDir(...paths) {
+              return path.join(entryOutDir, ...paths)
+            },
+            copyToEntryOutputDir({ from, to = path.basename(from), skipIfExist = true }) {
+              if (!fs.existsSync(from)) {
+                log.warn(`${from} not found`, { timestamp: true })
+                return
+              }
+              const target = path.join(entryOutDir, to)
+              copyAndSkipIfExist(from, target, skipIfExist)
+            },
+            copyModules() {
+              console.warn('`copyModules()` is deprecated. Will do nothing')
+            },
+          })
+
+          if (context.isDev) {
+            return
+          }
+
+          const buffer = await buildAsar(context.root, buildAsarOption)
+          if (!buildVersionJson && !isCI) {
+            log.warn(
+              'No `buildVersionJson` option setup, skip build version json. Only build in CI by default',
+              { timestamp: true },
+            )
+          } else {
+            await buildUpdateJson(buildVersionOption, buffer)
+          }
+        },
+      },
+    ],
+    options: mergeConfig<EnvironmentOptions, EnvironmentOptions>(
+      {
+        build: {
+          sourcemap,
+          minify,
+          outDir: entryOutDir,
+          rolldownOptions: {
+            external: finalExternal,
+            output: {
+              format: isESM ? 'es' : 'cjs',
+              polyfillRequire: isESM,
+              ...outputNames,
+            },
+          },
+        },
+        define,
+      },
+      entry.options || {},
+    ),
+  })
+
+  return _electronOptions
+}
+
 /**
- * Base on `vite-plugin-electron/simple`
+ * Base on `vite-plugin-electron/multi-env`
  * - integrate with updater
  * - no `renderer` config
  * - remove old output file
  * - externalize dependencies
  * - auto restart when entry file changes
- * - other configs in {@link https://github.com/electron-vite/electron-vite-vue/blob/main/vite.config.ts electron-vite-vue template}
  *
- * You can override all the vite configs, except output directories (use `options.updater.paths.electronDistPath` instead)
+ * You can override all the environment configs, except output directories (use `options.updater.paths.electronDistPath` instead)
  *
  * @example
  * ```ts
  * import { defineConfig } from 'vite'
- * import { debugStartup, electronWithUpdater } from 'electron-incremental-update/vite'
+ * import { electronWithUpdater } from 'electron-incremental-update/vite'
  *
  * export default defineConfig(async ({ command }) => {
  *   const isBuild = command === 'build'
@@ -154,8 +407,6 @@ function parseVersionPath(versionPath: string): string {
  *         isBuild,
  *         main: {
  *           files: ['./electron/main/index.ts', './electron/main/worker.ts'],
- *           // see https://github.com/electron-vite/electron-vite-vue/blob/85ed267c4851bf59f32888d766c0071661d4b94c/vite.config.ts#L22-L28
- *           onstart: debugStartup,
  *         },
  *         preload: {
  *           files: './electron/preload/index.ts',
@@ -165,239 +416,15 @@ function parseVersionPath(versionPath: string): string {
  *         }
  *       }),
  *     ],
- *     server: process.env.VSCODE_DEBUG && (() => {
- *       const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)
- *       return {
- *         host: url.hostname,
- *         port: +url.port,
- *       }
- *     })(),
  *   }
  * })
  * ```
  */
 export async function electronWithUpdater(
   options: ElectronWithUpdaterOptions,
-): Promise<PluginOption[] | undefined> {
-  let {
-    isBuild,
-    pkg = await loadPackageJSON() as PKG | null,
-    main: _main,
-    preload: _preload,
-    sourcemap = !isBuild,
-    minify = isBuild,
-    buildVersionJson,
-    updater,
-    bytecode,
-    useNotBundle = true,
-  } = options
-  if (!pkg || !pkg.version || !pkg.name || !pkg.main) {
-    log.error('package.json not found or invalid', { timestamp: true })
-    return undefined
-  }
-  const isESM = pkg.type === 'module'
-
-  let bytecodeOptions = typeof bytecode === 'object'
-    ? bytecode
-    : bytecode === true
-      ? { enable: true }
-      : undefined
-
-  if (isESM && bytecodeOptions?.enable) {
-    bytecodeLog.warn(
-      '`bytecodePlugin` does not support ES module, please remove "type": "module" in package.json',
-      { timestamp: true },
-    )
-    bytecodeOptions = undefined
-  }
-
-  const {
-    buildAsarOption,
-    buildEntryOption,
-    buildVersionOption,
-    postBuild,
-    cert,
-  } = parseOptions(isBuild, pkg, sourcemap, minify, updater)
-  const { entryOutputDirPath, nativeModuleEntryMap, appEntryPath, external } = buildEntryOption
-
-  try {
-    fs.rmSync(buildAsarOption.electronDistPath, { recursive: true, force: true })
-    fs.rmSync(entryOutputDirPath, { recursive: true, force: true })
-  } catch { }
-  log.info(`Clear cache files`, { timestamp: true })
-
-  sourcemap ??= (isBuild || !!process.env.VSCODE_DEBUG)
-
-  const _appPath = normalizePath(path.join(entryOutputDirPath, 'entry.js'))
-  if (path.resolve(normalizePath(pkg.main)) !== path.resolve(_appPath)) {
-    throw new Error(`Wrong "main" field in package.json: "${pkg.main}", it should be "${_appPath}"`)
-  }
-
-  const define = {
-    __EIU_ASAR_BASE_NAME__: JSON.stringify(path.basename(buildAsarOption.asarOutputPath)),
-    __EIU_ELECTRON_DIST_PATH__: JSON.stringify(normalizePath(buildAsarOption.electronDistPath)),
-    __EIU_ENTRY_DIST_PATH__: JSON.stringify(normalizePath(buildEntryOption.entryOutputDirPath)),
-    __EIU_IS_DEV__: JSON.stringify(!isBuild),
-    __EIU_IS_ESM__: JSON.stringify(isESM),
-    __EIU_MAIN_FILE__: JSON.stringify(getMainFileBaseName(_main.files)),
-    __EIU_SIGNATURE_CERT__: JSON.stringify(cert),
-    __EIU_VERSION_PATH__: JSON.stringify(parseVersionPath(normalizePath(buildVersionOption.versionPath))),
-  }
-
-  async function _buildEntry(): Promise<void> {
-    await buildEntry(
-      buildEntryOption,
-      isESM,
-      define,
-      bytecodeOptions,
-    )
-    log.info(`Build entry to '${entryOutputDirPath}'`, { timestamp: true })
-    await postBuild?.({
-      getPathFromEntryOutputDir(...paths) {
-        return path.join(entryOutputDirPath, ...paths)
-      },
-      copyToEntryOutputDir({ from, to = path.basename(from), skipIfExist = true }) {
-        if (!fs.existsSync(from)) {
-          log.warn(`${from} not found`, { timestamp: true })
-          return
-        }
-        const target = path.join(entryOutputDirPath, to)
-        copyAndSkipIfExist(from, target, skipIfExist)
-      },
-      copyModules({ modules, skipIfExist = true }) {
-        const nodeModulesPath = path.join(entryOutputDirPath, 'node_modules')
-        for (const m of modules) {
-          const { rootPath } = getPackageInfoSync(m) || {}
-          if (!rootPath) {
-            log.warn(`Package '${m}' not found`, { timestamp: true })
-            continue
-          }
-          copyAndSkipIfExist(rootPath, path.join(nodeModulesPath, m), skipIfExist)
-        }
-      },
-    })
-  }
-
-  let isInit = false
-
-  const rollupOptions: BuildOptions['rollupOptions'] = {
-    external,
-    treeshake: true,
-  }
-
-  const electronPluginOptions: ElectronSimpleOptions = {
-    main: {
-      entry: _main.files,
-      onstart: async (args) => {
-        if (!isInit) {
-          isInit = true
-          await _buildEntry()
-        }
-        if (_main.onstart) {
-          await _main.onstart(args)
-        } else {
-          await args.startup()
-        }
-      },
-      vite: mergeConfig<InlineConfig, InlineConfig>(
-        {
-          plugins: [
-            !isBuild && useNotBundle && notBundle(),
-            bytecodeOptions && bytecodePlugin('main', bytecodeOptions),
-            isESM && esm(),
-          ],
-          build: {
-            sourcemap,
-            minify,
-            outDir: `${buildAsarOption.electronDistPath}/main`,
-            rollupOptions,
-          },
-          define,
-        },
-        _main.vite ?? {},
-      ),
-    },
-    preload: {
-      input: _preload.files,
-      vite: mergeConfig<InlineConfig, InlineConfig>(
-        {
-          plugins: [
-            bytecodeOptions && bytecodePlugin('preload', bytecodeOptions),
-            isESM && esm(),
-            {
-              name: `${id}-build`,
-              enforce: 'post',
-              apply() {
-                return isBuild
-              },
-              async closeBundle() {
-                await _buildEntry()
-                const buffer = await buildAsar(buildAsarOption)
-                if (!buildVersionJson && !isCI) {
-                  log.warn('No `buildVersionJson` option setup, skip build version json. Only build in CI by default', { timestamp: true })
-                } else {
-                  await buildUpdateJson(buildVersionOption, buffer)
-                }
-              },
-            },
-          ],
-          build: {
-            sourcemap: sourcemap ? 'inline' : undefined,
-            minify,
-            outDir: `${buildAsarOption.electronDistPath}/preload`,
-            rollupOptions,
-          },
-          define,
-        },
-        _preload.vite ?? {},
-      ),
-    },
-  }
-
-  const result: PluginOption[] = [ElectronSimple(electronPluginOptions)]
-
-  if (nativeModuleEntryMap) {
-    const files = [
-      ...Object.values(nativeModuleEntryMap),
-      appEntryPath,
-    ].map(file => path.resolve(normalizePath(file)))
-
-    result.push({
-      name: `${id}-dev`,
-      apply() {
-        return !isBuild
-      },
-      configureServer(server) {
-        server.watcher
-          .add(files)
-          .on(
-            'change',
-            async (p) => {
-              if (!files.includes(p)) {
-                return
-              }
-              await _buildEntry()
-              if (_main.onstart) {
-                await _main.onstart({
-                  startup,
-                  reload: () => {
-                    // @ts-expect-error fxxk
-                    if (process.electronApp) {
-                      (server.hot || server.ws).send({ type: 'full-reload' })
-                      startup.send('electron-vite&type=hot-reload')
-                    } else {
-                      startup()
-                    }
-                  },
-                })
-              } else {
-                await startup()
-              }
-            },
-          )
-      },
-    })
-  }
-
-  return result
+): Promise<Plugin[] | undefined> {
+  return electronPluginFactory((context) => {
+    process.CACHED_ELECTRON_OPTIONS ??= createElectronOptions(options, context)
+    return process.CACHED_ELECTRON_OPTIONS
+  })
 }

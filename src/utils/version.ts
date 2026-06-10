@@ -21,12 +21,18 @@ export interface Version {
   stageVersion: number
 }
 
+interface PrereleaseIdentifier {
+  raw: string
+  numeric: number | undefined
+}
+
+const REG_VERSION = /^(\d+)\.(\d+)\.(\d+)(?:-([a-z0-9]+)(?:\.(\d+))?)?$/i
 /**
  * Parse version string to {@link Version}, like `0.2.0-beta.1`
  * @param version version string
  */
 export function parseVersion(version: string): Version {
-  const match = /^(\d+)\.(\d+)\.(\d+)(?:-([a-z0-9.-]+))?/i.exec(version)
+  const match = REG_VERSION.exec(version)
   if (!match) {
     throw new TypeError(`invalid version: ${version}`)
   }
@@ -39,23 +45,69 @@ export function parseVersion(version: string): Version {
     stageVersion: -1,
   }
   if (match[4]) {
-    let [stage, _v] = match[4].split('.')
-    ret.stage = stage
-    ret.stageVersion = Number(_v) || -1
+    ret.stage = match[4]
+    ret.stageVersion = match[5] === undefined ? -1 : Number(match[5])
   }
-  if (Number.isNaN(major) || Number.isNaN(minor) || Number.isNaN(patch) || Number.isNaN(ret.stageVersion)) {
+  if (
+    Number.isNaN(major) ||
+    Number.isNaN(minor) ||
+    Number.isNaN(patch) ||
+    Number.isNaN(ret.stageVersion)
+  ) {
     throw new TypeError(`Invalid version: ${version}`)
   }
-  return ret
+  return ret as Version
 }
 
-function compareStrings(str1: string, str2: string): boolean {
-  if (str1 === '') {
-    return str2 !== ''
-  } else if (str2 === '') {
-    return true
+function parsePrerelease(version: Version): PrereleaseIdentifier[] {
+  if (!version.stage) {
+    return []
   }
-  return str1 < str2
+
+  return [version.stage, version.stageVersion === -1 ? undefined : String(version.stageVersion)]
+    .filter((value): value is string => value !== undefined)
+    .flatMap((value) => value.split('.'))
+    .map((raw) => {
+      const numeric = /^\d+$/.test(raw) ? Number(raw) : undefined
+      return { raw, numeric }
+    })
+}
+
+function comparePrerelease(oldV: Version, newV: Version): boolean {
+  const oldParts = parsePrerelease(oldV)
+  const newParts = parsePrerelease(newV)
+
+  if (oldParts.length === 0 || newParts.length === 0) {
+    return oldParts.length > 0 && newParts.length === 0
+  }
+
+  const length = Math.max(oldParts.length, newParts.length)
+  for (let i = 0; i < length; i++) {
+    const oldPart = oldParts[i]
+    const newPart = newParts[i]
+
+    if (!oldPart) {
+      return true
+    }
+    if (!newPart) {
+      return false
+    }
+    if (oldPart.raw === newPart.raw) {
+      continue
+    }
+    if (oldPart.numeric !== undefined && newPart.numeric !== undefined) {
+      return oldPart.numeric < newPart.numeric
+    }
+    if (oldPart.numeric !== undefined) {
+      return true
+    }
+    if (newPart.numeric !== undefined) {
+      return false
+    }
+    return oldPart.raw < newPart.raw
+  }
+
+  return false
 }
 
 /**
@@ -67,21 +119,19 @@ export function defaultIsLowerVersion(oldVer: string, newVer: string): boolean {
   const oldV = parseVersion(oldVer)
   const newV = parseVersion(newVer)
 
-  for (let key of Object.keys(oldV) as Extract<keyof Version, string>[]) {
-    if (key === 'stage' && compareStrings(oldV[key], newV[key])) {
-      return true
-    } else if (oldV[key] !== newV[key]) {
+  for (const key of ['major', 'minor', 'patch'] as const) {
+    if (oldV[key] !== newV[key]) {
       return oldV[key] < newV[key]
     }
   }
 
-  return false
+  return comparePrerelease(oldV, newV)
 }
 
 /**
  * Update info json
  */
-export type UpdateInfo = {
+export interface UpdateInfo {
   /**
    * Update Asar signature
    */
@@ -112,8 +162,8 @@ const is = (j: any): boolean => !!(j && j.minimumVersion && j.signature && j.ver
  * Check is `UpdateJSON`
  * @param json any variable
  */
-export function isUpdateJSON(json: any): json is UpdateJSON {
-  return is(json) && is(json?.beta)
+export function isUpdateJSON(json: object): json is UpdateJSON {
+  return json && is(json) && is((json as any).beta)
 }
 
 /**
@@ -123,7 +173,12 @@ export function isUpdateJSON(json: any): json is UpdateJSON {
  * @param version target version
  * @param minimumVersion minimum version
  */
-export function defaultVersionJsonGenerator(existingJson: UpdateJSON, signature: string, version: string, minimumVersion: string): UpdateJSON {
+export function defaultVersionJsonGenerator(
+  existingJson: UpdateJSON,
+  signature: string,
+  version: string,
+  minimumVersion: string,
+): UpdateJSON {
   existingJson.beta = {
     version,
     minimumVersion,

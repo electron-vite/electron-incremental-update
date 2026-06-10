@@ -1,10 +1,14 @@
-import { readFileSync, rmSync } from 'node:fs'
-import { join } from 'node:path/posix'
+import { beforeAll, describe, expect, it } from 'bun:test'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
-import { afterAll, describe, expect, it } from 'vitest'
-
-import { aesDecrypt, aesEncrypt, defaultSignature, defaultVerifySignature, hashBuffer } from '../src/utils/crypto'
-import { generateKeyPair } from '../src/vite/key'
+import {
+  aesDecrypt,
+  aesEncrypt,
+  defaultSignature,
+  defaultVerifySignature,
+  hashBuffer,
+} from '../src/utils/crypto'
 
 let plain = ''
 
@@ -20,16 +24,21 @@ describe('test aes', () => {
     expect(aesDecrypt(e, k, iv)).toBe(plain)
   })
 })
-describe('test verify', () => {
+describe('test verify', async () => {
+  const dir = join(__dirname, 'keys')
+  const privateKeyPath = join(dir, 'key.pem')
+  const certPath = join(dir, 'cert.pem')
   const buffer = Buffer.from(plain, 'utf-8')
-  const dir = join(__dirname.replace(/\\/g, '/'), '/keys')
-  const privateKeyPath = join(dir, '/keys/key.pem')
-  const certPath = join(dir, '/keys/cert.pem')
-  generateKeyPair(2048, [{ name: 'commonName', value: 'test' }, { name: 'organizationName', value: 'org.test' }], 365, privateKeyPath, certPath)
-  const privateKey = readFileSync(privateKeyPath, { encoding: 'utf-8' })
-  const cert = readFileSync(certPath, { encoding: 'utf-8' })
   const version = '0.0.0-alpha1'
-  const sig = defaultSignature(buffer, privateKey, cert, version)
+
+  let privateKey: string, cert: string, sig: string
+
+  beforeAll(async () => {
+    privateKey = readFileSync(privateKeyPath, { encoding: 'utf-8' })
+    cert = readFileSync(certPath, { encoding: 'utf-8' })
+    sig = defaultSignature(buffer, privateKey, cert, version)
+  })
+
   it('verify passed', () => {
     expect(defaultVerifySignature(buffer, version, sig, cert)).toBeTruthy()
   })
@@ -50,7 +59,4 @@ describe('test verify', () => {
   //   }
   //   writeCertToMain(filePath, cert)
   // })
-  afterAll(() => {
-    rmSync(dir, { recursive: true })
-  })
 })

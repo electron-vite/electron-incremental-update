@@ -3,173 +3,344 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import * as babel from '@babel/core'
-import { getPackageInfoSync } from 'local-pkg'
-import MagicString from 'magic-string'
 
-import { parseVersion } from '../../utils/version'
-import { bytecodeLog } from '../constant'
 import { bytecodeGeneratorScript } from './code'
 
-export const electronModule: {
-  version: string | undefined
-  rootPath: string
-} = getPackageInfoSync('electron')!
-export const electronMajorVersion = parseVersion(electronModule.version!).major
-export const useStrict = '\'use strict\';'
+export const useStrict = "'use strict';"
 export const bytecodeModuleLoader = '__loader__.js'
 
-function getElectronPath(): string {
-  const electronModulePath = electronModule.rootPath
-  let electronExecPath = process.env.ELECTRON_EXEC_PATH || ''
-  if (!electronExecPath) {
-    if (!electronModulePath) {
-      throw new Error('Electron is not installed')
-    }
-    const pathFile = path.join(electronModulePath, 'path.txt')
-    let executablePath
-    if (fs.existsSync(pathFile)) {
-      executablePath = fs.readFileSync(pathFile, 'utf-8')
-    }
-    if (executablePath) {
-      electronExecPath = path.join(electronModulePath, 'dist', executablePath)
-      process.env.ELECTRON_EXEC_PATH = electronExecPath
-    } else {
-      throw new Error('Electron executable file is not existed')
-    }
+async function resolvePaths(
+  customPath: string | undefined,
+): Promise<{ electronPath: string; bytecodePath: string }> {
+  if (!customPath || !process.CACHED_ELECTRON_PATH) {
+    process.CACHED_ELECTRON_PATH = (await import('electron')).default as unknown as string
   }
-  return electronExecPath
-}
-function getBytecodeCompilerPath(): string {
-  const scriptPath = path.join(electronModule.rootPath, 'EIU_bytenode.cjs')
-  if (!fs.existsSync(scriptPath)) {
-    fs.writeFileSync(scriptPath, bytecodeGeneratorScript)
+
+  if (!process.CACHED_BYTECODE_COMPILER_PATH) {
+    process.CACHED_BYTECODE_COMPILER_PATH = path.join(
+      path.dirname(process.CACHED_ELECTRON_PATH),
+      'EIU_bytenode.cjs',
+    )
   }
-  return scriptPath
+  if (!fs.existsSync(process.CACHED_BYTECODE_COMPILER_PATH)) {
+    fs.writeFileSync(process.CACHED_BYTECODE_COMPILER_PATH, bytecodeGeneratorScript)
+  }
+  return {
+    electronPath: customPath || process.CACHED_ELECTRON_PATH,
+    bytecodePath: process.CACHED_BYTECODE_COMPILER_PATH,
+  }
 }
-export function toRelativePath(filename: string, importer: string): string {
-  const relPath = path.posix.relative(path.dirname(importer), filename)
-  return relPath.startsWith('.') ? relPath : `./${relPath}`
-}
 
-const logErr = (...args: any[]): void => bytecodeLog.error(args.join(' '), { timestamp: true })
+export async function compileToBytecode(
+  code: string,
+  name: string,
+  customElectronPath?: string,
+): Promise<Buffer | string> {
+  try {
+    const { bytecodePath, electronPath } = await resolvePaths(customElectronPath)
+    return await new Promise<Buffer>((resolve, reject) => {
+      const proc = cp.spawn(electronPath!, [bytecodePath], {
+        env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+        stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+      })
+      const stdoutChunks: Buffer[] = []
+      const stderrChunks: Buffer[] = []
 
-export function compileToBytecode(code: string, electronPath = getElectronPath()): Promise<Buffer> {
-  let data = Buffer.from([])
+      if (proc.stdin) {
+        proc.stdin.write(code)
+        proc.stdin.end()
+      }
 
-  const bytecodePath = getBytecodeCompilerPath()
-  return new Promise((resolve, reject) => {
-    const proc = cp.spawn(electronPath, [bytecodePath], {
-      env: { ELECTRON_RUN_AS_NODE: '1' } as any,
-      stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+      if (proc.stdout) {
+        proc.stdout
+          .on('data', (chunk_2) => stdoutChunks.push(chunk_2))
+          .on('error', (err) => reject(err))
+      }
+
+      if (proc.stderr) {
+        proc.stderr
+          .on('data', (chunk_3) => stderrChunks.push(chunk_3))
+          .on('error', (err_1) => reject(err_1))
+      }
+
+      proc.on('error', (err_2) => reject(err_2))
+
+      proc.on('close', (exitCode) => {
+        const stdout = Buffer.concat(stdoutChunks)
+        const errorMessage = Buffer.concat(stderrChunks).toString('utf-8')
+
+        if (exitCode !== 0 || stdout.length === 0) {
+          reject(
+            new Error(
+              `Bytecode generation process exited with code ${exitCode}. Error: ${errorMessage}`,
+            ),
+          )
+          return
+        }
+
+        resolve(stdout)
+      })
     })
-
-    if (proc.stdin) {
-      proc.stdin.write(code)
-      proc.stdin.end()
-    }
-
-    if (proc.stdout) {
-      proc.stdout.on('data', chunk => data = Buffer.concat([data, chunk]))
-      proc.stdout.on('error', err => logErr(err))
-      proc.stdout.on('end', () => resolve(data))
-    }
-
-    if (proc.stderr) {
-      proc.stderr.on('data', chunk => logErr('Error: ', chunk.toString()))
-      proc.stderr.on('error', err => logErr('Error: ', err))
-    }
-
-    proc.addListener('error', err => logErr(err))
-
-    proc.on('error', err => reject(err))
-    proc.on('exit', () => resolve(data))
-  })
+  } catch (e) {
+    return `Failed to generate bytecode of [${name}], ${e}`
+  }
 }
 
-export function convertArrowFunctionAndTemplate(code: string): { code: string, map: any } {
-  const result = babel.transform(code, {
-    plugins: ['@babel/plugin-transform-arrow-functions', '@babel/plugin-transform-template-literals'],
+interface ObfuscateState {
+  hasTransformed?: boolean
+}
+
+export interface PrepareContext {
+  requireRewrites: Record<string, string>
+  hasRequireRewrites: boolean
+}
+
+export const decodeFn =
+  ';function _0xstr_(a,b){return String.fromCharCode.apply(0,a.map(function(x){return x-b}))};'
+
+const decodeFnBody = babel.parse(decodeFn)?.program.body ?? []
+
+function createObfuscatedStringCall(input: string, offset?: number): babel.types.CallExpression {
+  const resolvedOffset = offset ?? ~~(Math.random() * 16) + 1
+  const elements = input.split('').map((char) => {
+    const value = char.codePointAt(0)! + resolvedOffset
+    const node = babel.types.numericLiteral(value)
+    node.extra = {
+      raw: `0x${value.toString(16)}`,
+      rawValue: value,
+    }
+    return node
   })
+
+  return babel.types.callExpression(babel.types.identifier('_0xstr_'), [
+    babel.types.arrayExpression(elements),
+    babel.types.numericLiteral(resolvedOffset),
+  ])
+}
+
+export function createPrepareContext(bytecodeFileNames: string[]): PrepareContext {
+  const requireRewrites: Record<string, string> = {}
+
+  for (const fileName of bytecodeFileNames) {
+    if (!fileName.endsWith('.js') && !fileName.endsWith('.cjs')) {
+      continue
+    }
+
+    const baseName = path.posix.basename(fileName)
+    requireRewrites[baseName] = `${baseName}c`
+  }
+
   return {
-    code: result?.code || code,
-    map: result?.map,
+    requireRewrites,
+    hasRequireRewrites: Object.keys(requireRewrites).length > 0,
   }
 }
 
-export const decodeFn = ';function _0xstr_(a,b){return String.fromCharCode.apply(0,a.map(function(x){return x-b}))};'
-export function obfuscateString(input: string, offset = ~~(Math.random() * 16) + 1): string {
-  const hexArray = input.split('').map(c => `0x${(c.charCodeAt(0) + offset).toString(16)}`)
-  return `_0xstr_([${hexArray.join(',')}],${offset})`
+function rewriteRequirePath(
+  requirePath: string,
+  requireRewrites: Record<string, string>,
+): string | undefined {
+  const baseName = path.posix.basename(requirePath)
+  const newBaseName = requireRewrites[baseName]
+
+  if (!newBaseName) {
+    return
+  }
+
+  return `${requirePath.slice(0, -baseName.length)}${newBaseName}`
 }
 
-/**
- * Obfuscate string
- * @param code source code
- * @param sourcemap whether to generate sourcemap
- * @param offset custom offset
- */
-export function convertLiteral(code: string, sourcemap?: boolean, offset?: number): { code: string, map?: any } {
-  const s = new MagicString(code)
-  let hasTransformed = false
-  const ast = babel.parse(code, { ast: true })
-  if (!ast) {
-    throw new Error('Cannot parse code')
+function rewriteSimpleRequireCalls(code: string, requireRewrites: Record<string, string>): string {
+  if (!code.includes('require(')) {
+    return code
   }
-  babel.traverse(ast, {
-    StringLiteral(path) {
-      const parent = path.parent
-      const node = path.node
 
-      if (parent.type === 'CallExpression') {
-        if (parent.callee.type === 'Identifier' && parent.callee.name === 'require') {
-          return
-        }
-        if (parent.callee.type === 'Import') {
-          return
-        }
-      }
-
-      if (parent.type.startsWith('Export')) {
-        return
-      }
-
-      if (parent.type.startsWith('Import')) {
-        return
-      }
-
-      if (parent.type === 'ObjectMethod' && parent.key === node) {
-        return
-      }
-
-      if (parent.type === 'ObjectProperty' && parent.key === node) {
-        const result = `[${obfuscateString(node.value, offset)}]`
-        const start = node.start
-        const end = node.end
-        if (start && end) {
-          s.overwrite(start, end, result)
-          hasTransformed = true
-        }
-        return
-      }
-      if (!node.value.trim()) {
-        return
-      }
-      const result = obfuscateString(node.value, offset)
-      const start = node.start
-      const end = node.end
-      if (start && end) {
-        s.overwrite(start, end, result)
-        hasTransformed = true
-      }
+  return code.replace(
+    /\brequire\(\s*(['"])([^'"]+)\1\s*\)/g,
+    (match, quote: string, requirePath: string) => {
+      const newRequirePath = rewriteRequirePath(requirePath, requireRewrites)
+      return newRequirePath ? `require(${quote}${newRequirePath}${quote})` : match
     },
-  })
+  )
+}
 
-  if (hasTransformed) {
-    s.append('\n').append(decodeFn)
+function obfuscateStringsPlugin(
+  _: unknown,
+  options: { offset?: number },
+): babel.PluginObj<ObfuscateState> {
+  function transformProperty(
+    path: babel.NodePath<babel.types.MemberExpression | babel.types.OptionalMemberExpression>,
+  ) {
+    const node = path.node
+    if (node.computed || !babel.types.isIdentifier(node.property)) {
+      return
+    }
+
+    const isInsideDecoder = path.findParent(
+      (parent) =>
+        parent.isFunctionDeclaration() &&
+        babel.types.isIdentifier(parent.node.id, { name: '_0xstr_' }),
+    )
+
+    if (isInsideDecoder) {
+      return
+    }
+
+    node.computed = true
+    node.property = babel.types.stringLiteral(node.property.name)
   }
 
   return {
-    code: s.toString(),
-    map: sourcemap ? s.generateMap({ hires: true }) : undefined,
+    visitor: {
+      MemberExpression(path: babel.NodePath<babel.types.MemberExpression>) {
+        transformProperty(path)
+      },
+      OptionalMemberExpression(path: babel.NodePath<babel.types.OptionalMemberExpression>) {
+        transformProperty(path)
+      },
+      ObjectProperty(path: babel.NodePath<babel.types.ObjectProperty>, state: ObfuscateState) {
+        const key = path.node.key
+
+        if (
+          path.node.computed ||
+          path.node.shorthand ||
+          !babel.types.isIdentifier(key) ||
+          key.name === '__proto__'
+        ) {
+          return
+        }
+
+        path.node.computed = true
+        path.node.key = createObfuscatedStringCall(key.name, options.offset)
+        state.hasTransformed = true
+      },
+      StringLiteral(path: babel.NodePath<babel.types.StringLiteral>, state: ObfuscateState) {
+        const parent = path.parent
+        const node = path.node
+
+        if (parent.type === 'CallExpression') {
+          if (parent.callee.type === 'Identifier' && parent.callee.name === 'require') {
+            return
+          }
+          if (parent.callee.type === 'Import') {
+            return
+          }
+        }
+
+        if (parent.type.startsWith('Export')) {
+          return
+        }
+
+        if (parent.type.startsWith('Import')) {
+          return
+        }
+
+        if (parent.type === 'ObjectMethod' && parent.key === node) {
+          parent.computed = true
+          path.replaceWith(createObfuscatedStringCall(node.value, options.offset))
+          state.hasTransformed = true
+          return
+        }
+
+        if (parent.type === 'ObjectProperty' && parent.key === node) {
+          parent.computed = true
+          path.replaceWith(createObfuscatedStringCall(node.value, options.offset))
+          state.hasTransformed = true
+          return
+        }
+
+        if (!node.value.trim()) {
+          return
+        }
+
+        path.replaceWith(createObfuscatedStringCall(node.value, options.offset))
+        state.hasTransformed = true
+      },
+      Program: {
+        exit(path: babel.NodePath<babel.types.Program>, state: ObfuscateState) {
+          if (!state.hasTransformed) {
+            return
+          }
+
+          path.unshiftContainer(
+            'body',
+            decodeFnBody.map((node) => babel.types.cloneNode(node)),
+          )
+        },
+      },
+    },
   }
+}
+
+function rewriteRequirePlugin(
+  _: unknown,
+  options: { requireRewrites: Record<string, string> },
+): babel.PluginObj {
+  return {
+    visitor: {
+      CallExpression(path: babel.NodePath<babel.types.CallExpression>) {
+        if (
+          !babel.types.isIdentifier(path.node.callee, { name: 'require' }) ||
+          path.node.arguments.length === 0
+        ) {
+          return
+        }
+
+        const arg = path.node.arguments[0]
+        if (!babel.types.isStringLiteral(arg)) {
+          return
+        }
+
+        const newRequirePath = rewriteRequirePath(arg.value, options.requireRewrites)
+
+        if (newRequirePath) {
+          path.node.arguments[0] = babel.types.stringLiteral(newRequirePath)
+        }
+      },
+    },
+  }
+}
+
+export function prepare(
+  code: string,
+  minify: boolean,
+  context: PrepareContext,
+  offset?: number,
+): babel.BabelFileResult | null {
+  if (
+    !code.includes('"') &&
+    !code.includes("'") &&
+    !code.includes('`') &&
+    !code.includes('=>') &&
+    !/\.[A-Za-z_$]/.test(code) &&
+    !/[{,]\s*[A-Za-z_$][\w$]*\s*:/.test(code)
+  ) {
+    return { code }
+  }
+
+  if (context.hasRequireRewrites && !code.includes('`') && !code.includes('=>')) {
+    const codeWithoutSimpleRequires = code.replace(/\brequire\(\s*(['"])([^'"]+)\1\s*\)/g, '')
+
+    if (!codeWithoutSimpleRequires.includes('"') && !codeWithoutSimpleRequires.includes("'")) {
+      return { code: rewriteSimpleRequireCalls(code, context.requireRewrites) }
+    }
+  }
+
+  return babel.transform(code, {
+    minified: minify,
+    plugins: [
+      '@babel/plugin-transform-arrow-functions',
+      '@babel/plugin-transform-template-literals',
+      [obfuscateStringsPlugin, { offset }],
+      [rewriteRequirePlugin, { requireRewrites: context.requireRewrites }],
+    ],
+  })
+}
+
+export function obfuscateString(
+  input: string,
+  offset: number = ~~(Math.random() * 16) + 1,
+): string {
+  const hexArray = input.split('').map((c) => `0x${(c.codePointAt(0)! + offset).toString(16)}`)
+  return `_0xstr_([${hexArray.join(',')}],${offset})`
 }

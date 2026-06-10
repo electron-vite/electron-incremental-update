@@ -1,11 +1,9 @@
-import type { ElectronWithUpdaterOptions } from './option'
-import type { UserConfig, UserConfigFn } from 'vite'
+import type { UserConfig } from 'vite'
 
 import { electronWithUpdater } from './core'
+import type { ElectronWithUpdaterOptions } from './types'
 
-type MakeOptional<T, K extends keyof T> = Partial<Pick<T, K>> & Omit<T, K>
-
-export interface ElectronViteHelperOptions extends MakeOptional<ElectronWithUpdaterOptions, 'isBuild'> {
+export interface ElectronViteHelperOptions extends ElectronWithUpdaterOptions {
   /**
    * Config for renderer process
    */
@@ -22,8 +20,6 @@ export interface ElectronViteHelperOptions extends MakeOptional<ElectronWithUpda
  * export default defineElectronConfig({
  *   main: {
  *     files: ['./electron/main/index.ts', './electron/main/worker.ts'],
- *     // see https://github.com/electron-vite/electron-vite-vue/blob/85ed267c4851bf59f32888d766c0071661d4b94c/vite.config.ts#L22-L28
- *     onstart: debugStartup,
  *   },
  *   preload: {
  *     files: './electron/preload/index.ts',
@@ -43,15 +39,15 @@ export interface ElectronViteHelperOptions extends MakeOptional<ElectronWithUpda
  * })
  * ```
  */
-export function defineElectronConfig(
-  options: ElectronViteHelperOptions,
-): UserConfigFn {
-  return ({ command }) => {
-    options.isBuild ??= command === 'build'
-    const electronPlugin = electronWithUpdater(options as ElectronWithUpdaterOptions)
-    const result = options.renderer ?? {}
-    result.plugins ??= []
-    result.plugins.push(electronPlugin)
-    return result
+export function defineElectronConfig(options: ElectronViteHelperOptions): UserConfig {
+  const electronPlugin = electronWithUpdater(options as ElectronWithUpdaterOptions)
+  const result = options.renderer ?? {}
+  result.plugins ??= []
+  result.plugins.push(electronPlugin)
+  const rendererDistPath = options.updater?.paths?.rendererDistPath
+  if (rendererDistPath) {
+    result.build ??= {}
+    result.build.outDir = rendererDistPath
   }
+  return result
 }

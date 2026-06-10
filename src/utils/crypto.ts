@@ -17,8 +17,14 @@ export function aesEncrypt(plainText: string, key: Buffer, iv: Buffer): string {
  * @param cert certificate
  * @param version target version
  */
-export function defaultSignature(buffer: Buffer, privateKey: string, cert: string, version: string): string {
-  const sig = crypto.createSign('RSA-SHA256')
+export function defaultSignature(
+  buffer: Buffer,
+  privateKey: string,
+  cert: string,
+  version: string,
+): string {
+  const sig = crypto
+    .createSign('RSA-SHA256')
     .update(buffer)
     .sign(crypto.createPrivateKey(privateKey), 'base64')
 
@@ -38,15 +44,20 @@ export function aesDecrypt(encryptedText: string, key: Buffer, iv: Buffer): stri
  * @param signature signature
  * @param cert certificate
  */
-export function defaultVerifySignature(buffer: Buffer, version: string, signature: string, cert: string): boolean {
+export function defaultVerifySignature(
+  buffer: Buffer,
+  version: string,
+  signature: string,
+  cert: string,
+): boolean {
   try {
-    const [sig, ver] = aesDecrypt(signature, hashBuffer(cert, 32), hashBuffer(buffer, 16)).split('%')
+    const [sig, ver] = aesDecrypt(signature, hashBuffer(cert, 32), hashBuffer(buffer, 16)).split(
+      '%',
+    )
     if (ver !== version) {
       return false
     }
-    return crypto.createVerify('RSA-SHA256')
-      .update(buffer)
-      .verify(cert, sig, 'base64')
+    return crypto.createVerify('RSA-SHA256').update(buffer).verify(cert, sig!, 'base64')
   } catch {
     return false
   }

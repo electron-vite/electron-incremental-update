@@ -1,50 +1,50 @@
 :root {
-  --scrollbar-width:max(0.85vw,10px);
+  --scrollbar-width: max(0.85vw, 10px);
 }
 
-@media (prefers-color-scheme:light) {
+@media (prefers-color-scheme: light) {
   :root {
-    --scrollbar-color-rgb:0,0,0;
+    --scrollbar-color-rgb: 0, 0, 0;
   }
 }
 
-@media (prefers-color-scheme:dark) {
+@media (prefers-color-scheme: dark) {
   :root {
-    --scrollbar-color-rgb:255,255,255;
+    --scrollbar-color-rgb: 255, 255, 255;
   }
 }
 
 *::-webkit-scrollbar {
-  width:var(--scrollbar-width)!important;
-  height:var(--scrollbar-width)!important;
+  width: var(--scrollbar-width) !important;
+  height: var(--scrollbar-width) !important;
 }
 
 *::-webkit-scrollbar-track {
-  background-color:transparent!important;
-  border-radius:var(--scrollbar-width)!important;
-  box-shadow:none!important;
+  background-color: transparent !important;
+  border-radius: var(--scrollbar-width) !important;
+  box-shadow: none !important;
 }
 
 *::-webkit-scrollbar-thumb {
-  box-shadow:inset 0 0 0 var(--scrollbar-width)!important;
-  border-radius:var(--scrollbar-width)!important;
-  border:calc(var(--scrollbar-width) * 2/9) solid transparent!important;
-  background-clip:content-box;
-  background-color:transparent!important;
-  color:rgba(var(--scrollbar-color-rgb),30%)!important;
+  box-shadow: inset 0 0 0 var(--scrollbar-width) !important;
+  border-radius: var(--scrollbar-width) !important;
+  border: calc(var(--scrollbar-width) * 2 / 9) solid transparent !important;
+  background-clip: content-box;
+  background-color: transparent !important;
+  color: rgba(var(--scrollbar-color-rgb), 30%) !important;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  color:rgba(var(--scrollbar-color-rgb),45%)!important;
+  color: rgba(var(--scrollbar-color-rgb), 45%) !important;
 }
 
 *::-webkit-scrollbar-thumb:active {
-  color:rgba(var(--scrollbar-color-rgb),60%)!important;
+  color: rgba(var(--scrollbar-color-rgb), 60%) !important;
 }
 
 @supports not selector(::-webkit-scrollbar) {
   html {
-    scrollbar-color:rgb(var(--scrollbar-color-rgb));
-    scrollbar-width:thin;
+    scrollbar-color: rgb(var(--scrollbar-color-rgb));
+    scrollbar-width: thin;
   }
 }

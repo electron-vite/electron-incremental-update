@@ -1,10 +1,11 @@
-:root, body {
-  --source-code-font-family:var(--mono)!important;
-  --source-code-font-size:12px!important;
-  --monospace-font-family:var(--mono)!important;
-  --monospace-font-size:12px!important;
-  --default-font-family:var(--sans), sans-serif!important;
-  --default-font-size:12px!important;
+:root,
+body {
+  --source-code-font-family: var(--mono) !important;
+  --source-code-font-size: 12px !important;
+  --monospace-font-family: var(--mono) !important;
+  --monospace-font-size: 12px !important;
+  --default-font-family: var(--sans), sans-serif !important;
+  --default-font-size: 12px !important;
 }
 
 button,
@@ -12,5 +13,5 @@ input,
 select,
 .undisplayable-text,
 .expandable-inline-button {
-  font-family:var(--sans)!important;
+  font-family: var(--sans) !important;
 }

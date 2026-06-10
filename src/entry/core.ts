@@ -1,12 +1,13 @@
-import type { Logger, UpdaterOption } from './types'
-import type { Promisable } from '@subframe7536/type-utils'
-
 import fs from 'node:fs'
 import path from 'node:path'
 
-import electron from 'electron'
+import { app, BrowserWindow } from 'electron'
 
+import { LocalDevProvider } from '../provider/local'
 import { getPathFromAppNameAsar, isDev } from '../utils/electron'
+import type { Promisable } from '../utils/type'
+
+import type { Logger, UpdaterOption } from './types'
 import { Updater } from './updater'
 
 /**
@@ -24,7 +25,23 @@ declare const __EIU_ASAR_BASE_NAME__: string
 /**
  * type only is esmodule, transformed by vite's define
  */
-declare const __EIU_IS_ESM__: string
+declare const __EIU_IS_ESM__: boolean
+/**
+ * type only local dev update enabled, transformed by vite's define
+ */
+declare const __EIU_LOCAL_DEV_UPDATE__: boolean
+/**
+ * type only local dev update base dir, transformed by vite's define
+ */
+declare const __EIU_LOCAL_DEV_UPDATE_DIR__: string
+/**
+ * type only local dev update chunk size, transformed by vite's define
+ */
+declare const __EIU_LOCAL_DEV_UPDATE_CHUNK_SIZE__: number | undefined
+/**
+ * type only local dev update chunk delay, transformed by vite's define
+ */
+declare const __EIU_LOCAL_DEV_UPDATE_CHUNK_DELAY__: number | undefined
 
 /**
  * Hooks on rename temp asar path to `${app.name}.asar`
@@ -35,7 +52,7 @@ declare const __EIU_IS_ESM__: string
  * @default install(); logger.info('update success!')
  */
 type OnInstallFunction = (
-  install: VoidFunction,
+  install: () => void,
   tempAsarPath: string,
   appNameAsarPath: string,
   logger?: Logger,
@@ -82,12 +99,49 @@ export interface AppOption {
 export function startupWithUpdater(
   fn: (updater: Updater) => Promisable<void>,
 ): (updater: Updater) => Promisable<void> {
+  if (isDev) {
+    process.on('message', (msg) => {
+      if (msg === 'electron-vite&type=hot-reload') {
+        for (const window of BrowserWindow.getAllWindows()) {
+          window.reload()
+        }
+      }
+    })
+  }
   return fn
+}
+
+function runWithDefaultExport(mod: any, args: any) {
+  return (mod.default || mod)(args)
 }
 
 const defaultOnInstall: OnInstallFunction = (install, _, __, logger) => {
   install()
   logger?.info(`update success!`)
+}
+
+function readDevAsarVersion(): string {
+  try {
+    return fs.readFileSync(getPathFromAppNameAsar('version'), 'utf-8').trim()
+  } catch {
+    return app.getVersion()
+  }
+}
+
+function resolveUpdaterOption(updater: UpdaterOption | undefined): UpdaterOption | undefined {
+  if (!isDev || !__EIU_LOCAL_DEV_UPDATE__ || updater?.provider) {
+    return updater
+  }
+
+  return {
+    ...updater,
+    provider: new LocalDevProvider({
+      baseDir: __EIU_LOCAL_DEV_UPDATE_DIR__,
+      chunkDelay: __EIU_LOCAL_DEV_UPDATE_CHUNK_DELAY__,
+      chunkSize: __EIU_LOCAL_DEV_UPDATE_CHUNK_SIZE__,
+    }),
+    getAppVersion: updater?.getAppVersion ?? readDevAsarVersion,
+  }
 }
 
 /**
@@ -105,24 +159,33 @@ const defaultOnInstall: OnInstallFunction = (install, _, __, logger) => {
  *   },
  * })
  */
-export async function createElectronApp(
-  appOptions: AppOption = {},
-): Promise<void> {
+export async function createElectronApp(appOptions: AppOption = {}): Promise<void> {
   const appNameAsarPath = getPathFromAppNameAsar()
 
   const {
     mainPath = isDev
-      ? path.join(electron.app.getAppPath(), __EIU_ELECTRON_DIST_PATH__, 'main', __EIU_MAIN_FILE__)
-      : path.join(path.dirname(electron.app.getAppPath()), __EIU_ASAR_BASE_NAME__, 'main', __EIU_MAIN_FILE__),
+      ? path.join(app.getAppPath(), __EIU_ELECTRON_DIST_PATH__, 'main', __EIU_MAIN_FILE__)
+      : path.join(
+          path.dirname(app.getAppPath()),
+          __EIU_ASAR_BASE_NAME__,
+          'main',
+          __EIU_MAIN_FILE__,
+        ),
     updater,
     onInstall = defaultOnInstall,
     beforeStart,
     onStartError,
   } = appOptions
 
-  const updaterInstance = typeof updater === 'object' || !updater
-    ? new Updater(updater)
-    : await updater()
+  const useAutoLocalDevProvider = isDev && __EIU_LOCAL_DEV_UPDATE__ && typeof updater !== 'function'
+  const updaterInstance =
+    typeof updater === 'object' || !updater
+      ? new Updater(resolveUpdaterOption(updater))
+      : await updater()
+
+  if (useAutoLocalDevProvider && updaterInstance.provider?.name === 'LocalDevProvider') {
+    updaterInstance.forceUpdate = true
+  }
 
   const logger = updaterInstance.logger
   try {
@@ -130,7 +193,12 @@ export async function createElectronApp(
     const tempAsarPath = `${appNameAsarPath}.tmp`
     if (fs.existsSync(tempAsarPath)) {
       logger?.info(`Installing new asar from ${tempAsarPath}`)
-      await onInstall(() => fs.renameSync(tempAsarPath, appNameAsarPath), tempAsarPath, appNameAsarPath, logger)
+      await onInstall(
+        () => fs.renameSync(tempAsarPath, appNameAsarPath),
+        tempAsarPath,
+        appNameAsarPath,
+        logger,
+      )
     }
 
     // logger.debug(`app.getAppPath(): ${app.getAppPath()}`)
@@ -140,15 +208,16 @@ export async function createElectronApp(
     await beforeStart?.(mainPath, logger)
 
     if (__EIU_IS_ESM__) {
-      (await import(`file://${mainPath}`)).default(updaterInstance)
+      const { pathToFileURL } = await import('node:url')
+      runWithDefaultExport(await import(pathToFileURL(mainPath).href), updaterInstance)
     } else {
-      // eslint-disable-next-line ts/no-require-imports
-      require(mainPath)(updaterInstance)
+      // oxlint-disable-next-line typescript/no-require-imports
+      runWithDefaultExport(require(mainPath), updaterInstance)
     }
   } catch (error) {
-    logger?.error('startup error, exit', error)
+    logger?.error('Fail to startup', error)
     onStartError?.(error, logger)
-    electron.app.quit()
+    app.quit()
   }
 }
 

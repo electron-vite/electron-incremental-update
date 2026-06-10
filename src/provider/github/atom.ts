@@ -1,6 +1,5 @@
-import type { BaseGitHubProviderOptions } from './base'
-
 import { defaultDownloadText } from '../../utils/download'
+
 import { BaseGitHubProvider } from './base'
 
 /**
@@ -13,10 +12,7 @@ import { BaseGitHubProvider } from './base'
  * @param options provider options
  */
 export class GitHubAtomProvider extends BaseGitHubProvider {
-  public name = 'GithubAtomProvider'
-  constructor(options: BaseGitHubProviderOptions) {
-    super(options)
-  }
+  public override name = 'GithubAtomProvider'
 
   protected getHeaders(accept: string): Record<string, string> {
     return { Accept: `application/${accept}`, ...this.options.extraHeaders }
@@ -26,7 +22,7 @@ export class GitHubAtomProvider extends BaseGitHubProvider {
    * @inheritdoc
    */
   protected async getVersionURL(versionPath: string, signal: AbortSignal): Promise<string> {
-    const tag = await defaultDownloadText(
+    const tag = await defaultDownloadText<string>(
       await this.parseURL(`releases.atom`),
       this.getHeaders('xml'),
       signal,
@@ -39,6 +35,7 @@ export class GitHubAtomProvider extends BaseGitHubProvider {
         }
       },
     )
-    return `releases/download/v${tag}/${versionPath}`
+    const version = tag.startsWith('v') ? tag.slice(1) : tag
+    return `releases/download/v${version}/${versionPath}`
   }
 }

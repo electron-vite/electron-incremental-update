@@ -3,12 +3,10 @@
 function run(css: string): void {
   let overriddenStyle = document.createElement('style')
   overriddenStyle.innerHTML = css
-  document.body.append(overriddenStyle);
-  [
-    'platform-windows',
-    'platform-mac',
-    'platform-linux',
-  ].forEach(c => document.querySelectorAll(`.${c}`).forEach(el => el.classList.remove(c)))
+  document.body.append(overriddenStyle)
+  ;['platform-windows', 'platform-mac', 'platform-linux'].forEach((c) =>
+    document.querySelectorAll(`.${c}`).forEach((el) => el.classList.remove(c)),
+  )
 
   addStyleToAutoComplete()
 
@@ -27,9 +25,11 @@ function run(css: string): void {
   observer.observe(document.body, { childList: true })
   function addStyleToAutoComplete(): void {
     document.querySelectorAll('.editor-tooltip-host').forEach((element) => {
-      if (element?.shadowRoot?.querySelectorAll('[data-key="overridden-dev-tools-font"]').length === 0) {
+      if (
+        element?.shadowRoot?.querySelectorAll('[data-key="overridden-dev-tools-font"]').length === 0
+      ) {
         const overriddenStyle = document.createElement('style')
-        overriddenStyle.setAttribute('data-key', 'overridden-dev-tools-font')
+        overriddenStyle.dataset.key = 'overridden-dev-tools-font'
         overriddenStyle.innerHTML = `${css}.cm-tooltip-autocomplete ul[role=listbox]{font-family:var(--mono)!important;}`
         element.shadowRoot.append(overriddenStyle)
       }

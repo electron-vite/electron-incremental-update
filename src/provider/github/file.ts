@@ -1,5 +1,4 @@
 import type { BaseGitHubProviderOptions } from './base'
-
 import { BaseGitHubProvider } from './base'
 
 export interface GitHubProviderOptions extends BaseGitHubProviderOptions {
@@ -19,7 +18,7 @@ export interface GitHubProviderOptions extends BaseGitHubProviderOptions {
  * @param options provider options
  */
 export class GitHubProvider extends BaseGitHubProvider<GitHubProviderOptions> {
-  public name = 'GithubProvider'
+  public override name = 'GithubProvider'
   constructor(options: GitHubProviderOptions) {
     super(options)
     if (!options.branch) {

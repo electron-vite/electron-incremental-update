@@ -2,6 +2,7 @@ name: Release
 
 permissions:
   contents: write
+  id-token: write
 
 on:
   push:
@@ -16,10 +17,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
+      - uses: oven-sh/setup-bun@v2
 
-      - run: npx changelogithub
+      # Ensure npm 11.5.1 or later is installed
+      - name: Update npm
+        run: bun install -g npm@latest
+
+      - run: bun ci
+      - run: bun run build
+      - run: npm publish --tag latest
+      - run: bunx changelogithub
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}

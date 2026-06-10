@@ -1,42 +1,4 @@
-import { rmSync } from 'node:fs'
-
 import { build, defineConfig } from 'tsdown'
-
-async function transformJS(path: string) {
-  const result = await build({
-    entry: path,
-    minify: true,
-    write: false,
-    dts: false,
-    config: false,
-  })
-
-  const chunk = result[0].chunks[0]
-  if (chunk.type === 'chunk') {
-    return chunk.code
-  }
-  throw new Error('Not chunk')
-}
-async function transformCSS(path: string) {
-  const result = await build({
-    entry: path,
-    minify: true,
-    write: false,
-    dts: false,
-    config: false,
-  })
-
-  const chunk = result[0].chunks[1]
-  if (chunk.type === 'asset') {
-    return chunk.source.toString().replace(/\s+/g, ' ')
-  }
-  throw new Error('Not asset')
-}
-
-rmSync('./dist', { recursive: true, force: true })
-const fontCSS = await transformCSS('./src/utils/devtools/font.css')
-const scrollbarCSS = await transformCSS('./src/utils/devtools/scrollbar.css')
-const JS = await transformJS('./src/utils/devtools/js.ts')
 
 export default defineConfig([
   {
@@ -47,19 +9,52 @@ export default defineConfig([
     },
     format: ['esm', 'cjs'],
     dts: { oxc: true },
-    define: {
-      __FONT_CSS__: JSON.stringify(fontCSS?.replace(/\n/g, '') || ''),
-      __SCROLLBAR_CSS__: JSON.stringify(scrollbarCSS?.replace(/\n/g, '') || ''),
-      __JS__: JSON.stringify(JS?.replace(/\n/g, '').replace('export{};', '') || ''),
+    css: {
+      minify: true,
     },
+    deps: {
+      skipNodeModulesBundle: true,
+    },
+    outputOptions: {
+      polyfillRequire: false,
+    },
+    exports: true,
+    plugins: [
+      {
+        name: 'inline-script',
+        load: {
+          order: 'pre',
+          async handler(id) {
+            if (!id.endsWith('?inject')) {
+              return
+            }
+
+            const result = await build({
+              entry: id.replace('?inject', ''),
+              clean: false,
+              config: false,
+              minify: true,
+              write: false,
+            })
+            const chunk = result[0].chunks.find((item) => item.type === 'chunk')
+            if (chunk) {
+              const code = chunk.code.replace('export{};', '')
+              return `export default ${JSON.stringify(code)}`
+            }
+          },
+        },
+      },
+    ],
   },
   {
     entry: {
       vite: './src/vite/index.ts',
     },
     format: 'esm',
-    dts: { resolve: true },
-    treeshake: true,
-    external: ['electron', 'vite'],
+    dts: { oxc: true },
+    exports: true,
+    deps: {
+      skipNodeModulesBundle: true,
+    },
   },
 ])
