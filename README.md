@@ -31,7 +31,7 @@ Lightweight incremental update tools for Electron applications built with Vite. 
       - [Testing The Local Flow](#testing-the-local-flow)
   - [Update Artifacts](#update-artifacts)
   - [Native Modules](#native-modules)
-      - [Result in app.asar](#result-in-appasar)
+    - [Result in app.asar](#result-in-appasar)
   - [Bytecode Protection](#bytecode-protection)
   - [Development Bundling](#development-bundling)
   - [Utilities](#utilities)
@@ -256,7 +256,6 @@ Common options:
 - `localDevUpdate`: generates and serves a local update package during dev startup. Use `true`
   for defaults, or pass `{ baseDir, packageJsonPath, chunkSize, chunkDelay }`. See [Local Development](#local-development) for details.
 - `updater.minimumVersion`: minimum supported entry asar version. Defaults to `0.0.0`.
-
 
 Default output paths:
 
