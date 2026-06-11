@@ -5,9 +5,14 @@ import type { ElectronWithUpdaterOptions } from './types'
 
 export interface ElectronViteHelperOptions extends ElectronWithUpdaterOptions {
   /**
+   * Root dir of project
+   * @default process.cwd()
+   */
+  root?: string
+  /**
    * Config for renderer process
    */
-  renderer?: UserConfig
+  renderer?: Omit<UserConfig, 'root'>
 }
 
 /**
@@ -18,6 +23,7 @@ export interface ElectronViteHelperOptions extends ElectronWithUpdaterOptions {
  * import { defineElectronConfig } from 'electron-incremental-update/vite'
  *
  * export default defineElectronConfig({
+ *   // root: './apps'
  *   main: {
  *     files: ['./electron/main/index.ts', './electron/main/worker.ts'],
  *   },
@@ -28,13 +34,7 @@ export interface ElectronViteHelperOptions extends ElectronWithUpdaterOptions {
  *     // options
  *   },
  *   renderer: {
- *     server: process.env.VSCODE_DEBUG && (() => {
- *       const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)
- *       return {
- *         host: url.hostname,
- *         port: +url.port,
- *       }
- *     })(),
+ *     // plugins: []
  *   }
  * })
  * ```
@@ -44,6 +44,7 @@ export function defineElectronConfig(options: ElectronViteHelperOptions): UserCo
   const result = options.renderer ?? {}
   result.plugins ??= []
   result.plugins.push(electronPlugin)
+  ;(result as UserConfig).root = options.root
   const rendererDistPath = options.updater?.paths?.rendererDistPath
   if (rendererDistPath) {
     result.build ??= {}
