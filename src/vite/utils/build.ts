@@ -22,24 +22,26 @@ export async function buildAsar(
     asarOutputPath,
     electronDistPath,
     rendererDistPath,
-    gzipPath,
-    generateGzipFile,
+    compressedPath,
+    generateCompressedFile,
   }: BuildAsarOptions,
 ): Promise<Buffer> {
   electronDistPath = path.resolve(root, electronDistPath)
   asarOutputPath = path.resolve(root, asarOutputPath)
   rendererDistPath = path.resolve(root, rendererDistPath)
-  gzipPath = path.resolve(root, gzipPath)
+  compressedPath = path.resolve(root, compressedPath)
 
   const rPath = path.join(electronDistPath, 'renderer')
   await fs.promises.cp(rendererDistPath, rPath, { recursive: true })
   fs.writeFileSync(path.join(electronDistPath, 'version'), version)
   await fs.promises.mkdir(path.dirname(asarOutputPath), { recursive: true })
   await createPackage(electronDistPath, asarOutputPath)
-  const buf = await generateGzipFile(fs.readFileSync(asarOutputPath))
-  await fs.promises.mkdir(path.dirname(gzipPath), { recursive: true })
-  fs.writeFileSync(gzipPath, buf)
-  log.info(`Build update asar to '${gzipPath}' [${readableSize(buf.length)}]`, { timestamp: true })
+  const buf = await generateCompressedFile(fs.readFileSync(asarOutputPath))
+  await fs.promises.mkdir(path.dirname(compressedPath), { recursive: true })
+  fs.writeFileSync(compressedPath, buf)
+  log.info(`Build update asar to '${compressedPath}' [${readableSize(buf.length)}]`, {
+    timestamp: true,
+  })
   return buf
 }
 

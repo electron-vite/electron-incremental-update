@@ -6,7 +6,7 @@ import { BaseGitHubProvider } from './base'
  * Update Provider for Github repo
  * - check update from `https://github.com/{user}/{repo}/releases.atom`
  * - download update json from `https://github.com/{user}/{repo}/releases/download/v{version}/{versionPath}`
- * - download update asar from `https://github.com/{user}/{repo}/releases/download/v{version}/{name}-{version}.asar.gz`
+ * - download update asar from `https://github.com/{user}/{repo}/releases/download/v{version}/{name}-{version}.asar.br`
  *
  * you can setup `urlHandler` in options to modify url before request
  * @param options provider options

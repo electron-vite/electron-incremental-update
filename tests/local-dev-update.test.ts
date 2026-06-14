@@ -45,8 +45,8 @@ function createBuildAsarOption(): BuildAsarOptions {
     asarOutputPath: 'release/test.asar',
     electronDistPath: 'dist-electron',
     rendererDistPath: 'dist',
-    gzipPath: 'release/test-0.0.1.asar.gz',
-    generateGzipFile: async (buffer) => buffer,
+    compressedPath: 'release/test-0.0.1.asar.br',
+    generateCompressedFile: async (buffer) => buffer,
   }
 }
 
@@ -90,7 +90,7 @@ describe('local dev update helper', () => {
     expect(version).toBe('1.2.4')
     expect(updateJSON.version).toBe('1.2.4')
     expect(updateJSON.signature).toBe('local-dev')
-    expect(existsSync(path.join(root, 'release/local-update/test-1.2.4.asar.gz'))).toBe(true)
+    expect(existsSync(path.join(root, 'release/local-update/test-1.2.4.asar.br'))).toBe(true)
     expect(
       extractFile(path.join(root, 'release/local-update/test.asar'), 'version')
         .toString('utf-8')

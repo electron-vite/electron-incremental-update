@@ -35,16 +35,16 @@ describe('build utils', () => {
     const options: BuildAsarOptions = {
       version: '1.0.0',
       asarOutputPath: 'nested/asar/test.asar',
-      gzipPath: 'nested/archive/test-1.0.0.asar.gz',
+      compressedPath: 'nested/archive/test-1.0.0.asar.br',
       electronDistPath: 'dist-electron',
       rendererDistPath: 'dist',
-      generateGzipFile: async (buffer) => buffer,
+      generateCompressedFile: async (buffer) => buffer,
     }
 
     await buildAsar(root, options)
 
     expect(existsSync(path.join(root, options.asarOutputPath))).toBe(true)
-    expect(existsSync(path.join(root, options.gzipPath))).toBe(true)
+    expect(existsSync(path.join(root, options.compressedPath))).toBe(true)
   })
 
   it('creates nested output directories for version json', async () => {

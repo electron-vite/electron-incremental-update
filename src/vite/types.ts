@@ -185,7 +185,7 @@ export interface LocalDevUpdateOptions {
    * Directory that contains local update resources.
    *
    * The generated version file is written under `{baseDir}/{versionPath}` and
-   * update archives are written as `{baseDir}/{name}-{version}.asar.gz`.
+   * update archives are written as `{baseDir}/{name}-{version}.asar.br`.
    *
    * @default 'release/local-update'
    */
@@ -230,10 +230,10 @@ export interface UpdaterOptions {
      */
     versionPath?: string
     /**
-     * Path to gzipped asar file
-     * @default `release/${app.name}-${version}.asar.gz`
+     * Path to compressed asar file
+     * @default `release/${app.name}-${version}.asar.br`
      */
-    gzipPath?: string
+    compressedPath?: string
     /**
      * Path to electron build output
      * @default `dist-electron`
@@ -321,20 +321,20 @@ export interface GeneratorOverrideFunctions {
     minVersion: string,
   ) => Promisable<UpdateJSON>
   /**
-   * Custom generate zip file buffer
+   * Custom generate compressed file buffer
    * @param buffer source buffer
    */
-  generateGzipFile?: (buffer: Buffer) => Promisable<Buffer>
+  generateCompressedFile?: (buffer: Buffer) => Promisable<Buffer>
 }
 
 export interface BuildAsarOptions extends Required<
   Pick<
     NonNullable<UpdaterOptions['paths']>,
-    'asarOutputPath' | 'electronDistPath' | 'gzipPath' | 'rendererDistPath'
+    'asarOutputPath' | 'electronDistPath' | 'compressedPath' | 'rendererDistPath'
   >
 > {
   version: string
-  generateGzipFile: NonNullable<GeneratorOverrideFunctions['generateGzipFile']>
+  generateCompressedFile: NonNullable<GeneratorOverrideFunctions['generateCompressedFile']>
 }
 
 export interface BuildVersionOptions {

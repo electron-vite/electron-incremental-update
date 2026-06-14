@@ -67,7 +67,7 @@ export abstract class BaseGitHubProvider<
       signal,
     )
     const getURL = (ver: string): Promise<string> =>
-      this.parseURL(`releases/download/v${ver}/${name}-${ver}.asar.gz`)
+      this.parseURL(`releases/download/v${ver}/${name}-${ver}.asar.br`)
 
     return {
       ...info,

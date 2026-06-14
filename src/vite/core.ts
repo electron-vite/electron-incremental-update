@@ -11,9 +11,9 @@ import type {
 } from 'vite-plugin-electron/multi-env'
 import { esmShim } from 'vite-plugin-electron/plugin'
 
+import { defaultCompressFile } from '../utils/compress'
 import { defaultSignature } from '../utils/crypto'
 import { defaultVersionJsonGenerator } from '../utils/version'
-import { defaultZipFile } from '../utils/zip'
 
 import { bytecodePlugin } from './bytecode'
 import { defaultExternal, id, log } from './constant'
@@ -47,7 +47,7 @@ async function resolveUpdaterOption(
     minimumVersion = '0.0.0',
     paths: {
       asarOutputPath = `release/${pkg.name}.asar`,
-      gzipPath = `release/${pkg.name}-${pkg.version}.asar.gz`,
+      compressedPath = `release/${pkg.name}-${pkg.version}.asar.br`,
       entryOutDir = 'dist-entry',
       electronDistPath = 'dist-electron',
       rendererDistPath = 'dist',
@@ -66,7 +66,7 @@ async function resolveUpdaterOption(
       } = {},
     } = {},
     overrideGenerator: {
-      generateGzipFile = defaultZipFile,
+      generateCompressedFile = defaultCompressFile,
       generateSignature = defaultSignature,
       generateUpdateJson = defaultVersionJsonGenerator,
     } = {},
@@ -86,10 +86,10 @@ async function resolveUpdaterOption(
     buildAsarOption: {
       version: pkg.version,
       asarOutputPath,
-      gzipPath,
+      compressedPath,
       electronDistPath,
       rendererDistPath,
-      generateGzipFile,
+      generateCompressedFile,
     },
     buildVersionOption: {
       version: pkg.version,

@@ -151,7 +151,7 @@ export async function prepareLocalDevUpdateResource({
   const stagedElectronDistPath = path.join(workDir, 'dist-electron')
   const resolvedVersionPath = path.join(localDevUpdate.baseDir, versionPath)
   const asarPath = path.join(localDevUpdate.baseDir, `${pkg.name}.asar`)
-  const gzipPath = path.join(localDevUpdate.baseDir, `${pkg.name}-${targetVersion}.asar.gz`)
+  const compressedPath = path.join(localDevUpdate.baseDir, `${pkg.name}-${targetVersion}.asar.br`)
 
   try {
     await mkdir(localDevUpdate.baseDir, { recursive: true })
@@ -162,8 +162,8 @@ export async function prepareLocalDevUpdateResource({
     await writeFile(path.join(stagedElectronDistPath, 'version'), targetVersion, 'utf-8')
     await createPackage(stagedElectronDistPath, asarPath)
 
-    const compressedBuffer = await buildAsarOption.generateGzipFile(await readFile(asarPath))
-    await writeFile(gzipPath, compressedBuffer)
+    const compressedBuffer = await buildAsarOption.generateCompressedFile(await readFile(asarPath))
+    await writeFile(compressedPath, compressedBuffer)
 
     const updateJSON = defaultVersionJsonGenerator(
       await readExistingUpdateJSON(resolvedVersionPath, targetVersion),

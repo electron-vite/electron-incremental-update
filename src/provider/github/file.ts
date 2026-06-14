@@ -12,7 +12,7 @@ export interface GitHubProviderOptions extends BaseGitHubProviderOptions {
 /**
  * Update Provider for Github repo
  * - download update json from `https://github.com/{user}/{repo}/raw/HEAD/{versionPath}`
- * - download update asar from `https://github.com/{user}/{repo}/releases/download/v{version}/{name}-{version}.asar.gz`
+ * - download update asar from `https://github.com/{user}/{repo}/releases/download/v{version}/{name}-{version}.asar.br`
  *
  * you can setup `urlHandler` in options to modify url before request
  * @param options provider options
