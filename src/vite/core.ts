@@ -355,7 +355,7 @@ async function createElectronOptions(
               { timestamp: true },
             )
           } else {
-            await buildUpdateJson(buildVersionOption, buffer)
+            await buildUpdateJson(context.root, buildVersionOption, buffer)
           }
         },
       },

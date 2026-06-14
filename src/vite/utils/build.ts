@@ -51,6 +51,7 @@ export async function buildAsar(
  * @param asarBuffer - Buffer of the asar file to sign
  */
 export async function buildUpdateJson(
+  root: string,
   {
     versionPath,
     privateKey,
@@ -62,6 +63,7 @@ export async function buildUpdateJson(
   }: BuildVersionOptions,
   asarBuffer: Buffer,
 ): Promise<void> {
+  const resolvedVersionPath = path.resolve(root, versionPath)
   let _json: UpdateJSON = {
     beta: {
       minimumVersion: version,
@@ -90,7 +92,7 @@ export async function buildUpdateJson(
     throw new Error('Invalid update json')
   }
 
-  await fs.promises.mkdir(path.dirname(versionPath), { recursive: true })
-  fs.writeFileSync(versionPath, JSON.stringify(_json, null, 2))
-  log.info(`build update json to '${versionPath}'`, { timestamp: true })
+  await fs.promises.mkdir(path.dirname(resolvedVersionPath), { recursive: true })
+  fs.writeFileSync(resolvedVersionPath, JSON.stringify(_json, null, 2))
+  log.info(`Build update json to '${resolvedVersionPath}'`, { timestamp: true })
 }

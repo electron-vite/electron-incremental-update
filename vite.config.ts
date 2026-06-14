@@ -2,6 +2,7 @@ import { defineElectronConfig } from './src/vite'
 
 export default defineElectronConfig({
   root: './playground',
+  buildVersionJson: true,
   bytecode: {
     preload: false,
   },

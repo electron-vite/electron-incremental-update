@@ -70,7 +70,7 @@ describe('build utils', () => {
       }),
     }
 
-    await buildUpdateJson(options, Buffer.from('asar'))
+    await buildUpdateJson(root, options, Buffer.from('asar'))
 
     const json = JSON.parse(await readFile(versionPath, 'utf-8'))
     expect(json.version).toBe('1.0.0')
