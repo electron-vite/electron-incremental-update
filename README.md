@@ -16,25 +16,15 @@ Lightweight incremental update tools for Electron applications built with Vite. 
     - [Plugin Options](#plugin-options)
   - [Electron Builder](#electron-builder)
   - [Runtime Usage](#runtime-usage)
-    - [Create The App](#create-the-app)
-    - [Updater API](#updater-api)
   - [Providers](#providers)
-    - [GitHub](#github)
-      - [Default](#default)
-      - [Atom](#atom)
-      - [Api](#api)
-      - [URL Handling](#url-handling)
-    - [Local](#local)
-      - [Recommended Setup](#recommended-setup)
-      - [Custom Options](#custom-options)
-      - [Manual Provider](#manual-provider)
-      - [Testing The Local Flow](#testing-the-local-flow)
+    - [Testing The Local Flow](#testing-the-local-flow)
   - [Update Artifacts](#update-artifacts)
   - [Native Modules](#native-modules)
-    - [Result in app.asar](#result-in-appasar)
+      - [Result in app.asar](#result-in-appasar)
   - [Bytecode Protection](#bytecode-protection)
   - [Development Bundling](#development-bundling)
   - [Utilities](#utilities)
+  - [API Reference](#api-reference)
   - [Credits](#credits)
   - [License](#license)
 
@@ -244,7 +234,7 @@ export default defineConfig({
 
 ### Plugin Options
 
-Common options:
+Common options overview:
 
 - `entry.files`: entry process input. Required.
 - `main.files`: main process input. Required.
@@ -256,26 +246,10 @@ Common options:
 - `external`: additional Vite/Rolldown externals. Use `true` to externalize `dependencies`.
 - `buildVersionJson`: generates update JSON. Defaults to CI only.
 - `localDevUpdate`: generates and serves a local update package during dev startup. Use `true`
-  for defaults, or pass `{ baseDir, packageJsonPath, chunkSize, chunkDelay }`. See [Local Development](#local-development) for details.
+  for defaults, or pass `{ baseDir, packageJsonPath, chunkSize, chunkDelay }`. See [Testing The Local Flow](#testing-the-local-flow) for details.
 - `updater.minimumVersion`: minimum supported entry asar version. Defaults to `0.0.0`.
 
-Default output paths:
-
-- `updater.paths.asarOutputPath`: `release/${app.name}.asar`
-- `updater.paths.compressedPath`: `release/${app.name}-${version}.asar.br`
-- `updater.paths.versionPath`: `release/version.json`
-- `updater.paths.entryOutDir`: `dist-entry`
-- `updater.paths.electronDistPath`: `dist-electron`
-- `updater.paths.rendererDistPath`: `dist`
-
-Signing keys:
-
-- `updater.keys.privateKeyPath`: defaults to `keys/private.pem`
-- `updater.keys.certPath`: defaults to `keys/cert.pem`
-- `UPDATER_PK`: overrides `privateKeyPath`
-- `UPDATER_CERT`: overrides `certPath`
-
-The plugin creates a simple self-signed certificate when the key files are missing.
+> 📖 See [API.md → Plugin Options](./API.md#plugin-options) for the complete reference including all types, defaults, paths, keys, and generator overrides.
 
 ## Electron Builder
 
@@ -318,227 +292,44 @@ module.exports = {
 
 ## Runtime Usage
 
-### Create The App
-
 ```ts
 import { createElectronApp } from 'electron-incremental-update'
+import { GitHubProvider } from 'electron-incremental-update/provider'
 
 createElectronApp({
   updater: {
-    provider,
-    receiveBeta: false,
-    logger: console,
+    provider: new GitHubProvider({
+      user: 'your-github-user',
+      repo: 'your-repo',
+    }),
   },
-  onInstall(install, tempAsarPath, appNameAsarPath, logger) {
-    logger?.info(`Installing ${tempAsarPath} to ${appNameAsarPath}`)
-    install()
-  },
-  onStartError(error, logger) {
-    logger?.error('Failed to start app', error)
+  beforeStart(mainFilePath, logger) {
+    logger?.debug(`Starting app from ${mainFilePath}`)
   },
 })
 ```
 
-`updater` can also be an async factory:
+The full `Updater` API, `createElectronApp` options, `AppOption`, events, and error codes are documented in the API reference.
 
-```ts
-createElectronApp({
-  updater: async () => {
-    const { Updater } = await import('electron-incremental-update')
-    return new Updater({ provider })
-  },
-})
-```
-
-### Updater API
-
-```ts
-updater.provider = provider
-updater.receiveBeta = true
-updater.logger = console
-
-await updater.checkForUpdates()
-await updater.downloadUpdate()
-updater.cancel()
-updater.quitAndInstall()
-```
-
-Events:
-
-- `update-available`: emitted with update info and current app/entry versions.
-- `update-not-available`: emitted with a code, message, and optional update info.
-- `download-progress`: emitted while downloading.
-- `update-downloaded`: emitted after the temporary asar is ready.
-- `update-cancelled`: emitted after cancellation.
-- `error`: emitted with `UpdaterError`.
+> 📖 See [API.md → Entry API](./API.md#entry-api) for the complete reference.
 
 ## Providers
 
-### GitHub
+The package includes GitHub-based providers (file, atom, API) and a local development provider.
 
-Read update metadata from a GitHub repository and download `{name}-{version}.asar.br` from Releases.
+- **GitHubProvider** — reads `version.json` from a repository branch, downloads asar from Releases.
+- **GitHubAtomProvider** — reads the latest release from `releases.atom`.
+- **GitHubApiProvider** — uses the GitHub Releases API (supports tokens for private repos).
+- **LocalDevProvider** — reads update artifacts from the local filesystem for dev testing.
 
-#### Default
+All GitHub providers support a `urlHandler` for mirrors and custom gateways.
 
-Reads `version.json` from the repository branch and downloads the asar from GitHub Releases.
+See the [API reference](./API.md#providers) for the complete provider constructor options and method signatures.
 
-```ts
-import { GitHubProvider } from 'electron-incremental-update/provider'
+### Testing The Local Flow
 
-const provider = new GitHubProvider({
-  user: 'your-github-user',
-  repo: 'your-repo',
-  branch: 'HEAD',
-})
-```
-
-Default URLs:
-
-- update JSON: `https://github.com/{user}/{repo}/raw/{branch}/{versionPath}`
-- asar: `https://github.com/{user}/{repo}/releases/download/v{version}/{name}-{version}.asar.br`
-
-#### Atom
-
-Reads the latest release tag from `releases.atom`, then downloads the update JSON and asar from that release.
-
-```ts
-import { GitHubAtomProvider } from 'electron-incremental-update/provider'
-
-const provider = new GitHubAtomProvider({
-  user: 'your-github-user',
-  repo: 'your-repo',
-})
-```
-
-#### Api
-
-Uses the GitHub Releases API and can use a token for private repositories or higher rate limits.
-
-```ts
-import { GitHubApiProvider } from 'electron-incremental-update/provider'
-
-const provider = new GitHubApiProvider({
-  user: 'your-github-user',
-  repo: 'your-repo',
-  token: process.env.GITHUB_TOKEN,
-})
-```
-
-#### URL Handling
-
-GitHub providers support `urlHandler` for mirrors, custom gateways, or request rewriting.
-
-```ts
-const provider = new GitHubProvider({
-  user: 'your-github-user',
-  repo: 'your-repo',
-  urlHandler(url) {
-    url.hostname = 'mirror.example.com'
-    url.pathname = `https://github.com${url.pathname}`
-    return url
-  },
-})
-```
-
-### Local
-
-Test update flows without publishing a GitHub release.
-
-Prefer `localDevUpdate: true` in the Vite plugin over manual `LocalDevProvider`.
-
-#### Recommended Setup
-
-Enable local update generation in `vite.config.ts`:
-
-```ts
-import { electronWithUpdater } from 'electron-incremental-update/vite'
-import { defineConfig } from 'vite'
-
-export default defineConfig({
-  plugins: [
-    electronWithUpdater({
-      entry: {
-        files: './electron/entry.ts',
-      },
-      main: {
-        files: './electron/main/index.ts',
-      },
-      preload: {
-        files: './electron/preload/index.ts',
-      },
-      localDevUpdate: true,
-    }),
-  ],
-})
-```
-
-When `localDevUpdate` is enabled in development:
-
-- Vite plugin creates a local update package before Electron starts
-- `createElectronApp()` auto-configures `LocalDevProvider` (unless `updater.provider` is set explicitly)
-- `forceUpdate` is enabled so update checks are never skipped
-- Production builds keep the normal provider and signature behavior
-
-The default generated files are:
-
-- `release/local-update/release/version.json`
-- `release/local-update/{name}-{version}.asar.br`
-- `DEV.asar`
-- `DEV.asar.tmp` after `downloadUpdate()`
-
-The generated update version is the next patch version from the installed local dev asar. For
-example, if `DEV.asar` contains version `1.2.3`, the generated update is `1.2.4`.
-
-#### Custom Options
-
-```ts
-export default defineConfig({
-  plugins: [
-    electronWithUpdater({
-      // ...
-      localDevUpdate: {
-        baseDir: 'release/local-update',
-        packageJsonPath: 'playground/package.json',
-        chunkSize: 32 * 1024,
-        chunkDelay: 50,
-      },
-    }),
-  ],
-})
-```
-
-Options:
-
-- `baseDir`: directory for generated local update resources. Defaults to `release/local-update`.
-- `packageJsonPath`: package metadata used for update name/version. Defaults to the project
-  `package.json`.
-- `chunkSize`: bytes per simulated download progress chunk. Defaults to `64 * 1024`.
-- `chunkDelay`: delay between progress chunks in milliseconds. Defaults to `30`.
-
-`chunkSize` must be greater than `0`, and `chunkDelay` must be greater than or equal to `0`.
-
-#### Manual Provider
-
-Use `LocalDevProvider` directly only when you need to wire local artifacts yourself.
-
-```ts
-import { LocalDevProvider } from 'electron-incremental-update/provider'
-
-const provider = new LocalDevProvider({
-  baseDir: 'release/local-update',
-  chunkSize: 32 * 1024,
-  chunkDelay: 50,
-})
-```
-
-It reads:
-
-- `{baseDir}/{versionPath}`
-- `{baseDir}/{name}-{version}.asar.br`
-
-#### Testing The Local Flow
-
-Use the [playground](./playground) as a complete local update test:
+Prefer `localDevUpdate: true` in the Vite plugin over constructing `LocalDevProvider` manually.
+See [playground](./playground) as a complete local update test:
 
 ```sh
 bun run play
@@ -792,56 +583,15 @@ electronWithUpdater({
 
 ## Utilities
 
-Import from `electron-incremental-update/utils`:
+Import from `electron-incremental-update/utils` for path helpers, platform checks, native module loading, crypto, compression, download, and version parsing utilities.
 
-```ts
-import {
-  aesDecrypt,
-  aesEncrypt,
-  beautifyDevTools,
-  defaultIsLowerVersion,
-  defaultSignature,
-  defaultDecompressFile,
-  defaultVerifySignature,
-  defaultCompressFile,
-  getAppVersion,
-  getEntryVersion,
-  getPathFromAppNameAsar,
-  getPathFromEntryAsar,
-  getPathFromMain,
-  getPathFromPreload,
-  getPathFromPublic,
-  handleUnexpectedErrors,
-  hashBuffer,
-  importNative,
-  isDev,
-  isLinux,
-  isMac,
-  isWin,
-  loadPage,
-  parseVersion,
-  requireNative,
-  restartApp,
-  setAppUserModelId,
-  setPortableDataPath,
-  singleInstance,
-} from 'electron-incremental-update/utils'
-```
+> 📖 See [API.md → Utilities API](./API.md#utilities-api) for the complete function list with signatures and descriptions.
 
-Common helpers:
+## API Reference
 
-- `getPathFromAppNameAsar(...paths)`: path inside `${app.name}.asar`.
-- `getPathFromEntryAsar(...paths)`: path inside `app.asar`.
-- `getPathFromMain(...paths)`: path inside the built main directory.
-- `getPathFromPreload(...paths)`: path inside the built preload directory.
-- `getPathFromPublic(...paths)`: path inside `public` in dev or renderer output in production.
-- `getAppVersion()`: current app version. In dev, returns the entry version.
-- `getEntryVersion()`: version from Electron app metadata.
-- `loadPage(win, htmlFilePath)`: loads `VITE_DEV_SERVER_URL` in dev or renderer HTML in production.
-- `singleInstance(window)`: restores and focuses the window on `second-instance`.
-- `setPortableDataPath(dirName, create)`: stores user data beside the executable for portable apps.
-- `requireNative(moduleName)`: loads a CommonJS native helper from entry asar.
-- `importNative(moduleName)`: imports an ES module native helper from entry asar.
+For the full API documentation including all types, options tables, provider constructors, and plugin configuration, see the standalone reference:
+
+> 📖 **[API.md](./API.md)** — Auto-generated JSDoc extraction + manual reference sections.
 
 ## Credits
 

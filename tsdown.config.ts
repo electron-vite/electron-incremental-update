@@ -1,5 +1,7 @@
 import { build, defineConfig } from 'tsdown'
 
+import { apiDocsPlugin } from './api-docs-plugin.ts'
+
 export default defineConfig([
   {
     entry: {
@@ -20,6 +22,7 @@ export default defineConfig([
     },
     exports: true,
     plugins: [
+      apiDocsPlugin(),
       {
         name: 'inline-script',
         load: {

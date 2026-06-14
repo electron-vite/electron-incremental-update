@@ -19,13 +19,7 @@ export interface BaseGitHubProviderOptions {
    */
   extraHeaders?: Record<string, string>
   /**
-   * Custom url handler ({@link https://github.com/XIU2/UserScript/blob/master/GithubEnhanced-High-Speed-Download.user.js#L40 some public CDN links})
-   * @example
-   * (url) => {
-   *   url.hostname = 'mirror.ghproxy.com'
-   *   url.pathname = 'https://github.com' + url.pathname
-   *   return url
-   * }
+   * Custom url handler ([some public CDN links](https://github.com/XIU2/UserScript/blob/master/GithubEnhanced-High-Speed-Download.user.js#L40)). See {@link URLHandler} for details.
    */
   urlHandler?: URLHandler
 }

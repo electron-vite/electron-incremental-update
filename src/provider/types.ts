@@ -82,4 +82,14 @@ export interface IProvider {
   ) => Promisable<boolean>
 }
 
+/**
+ * Custom URL handler for GitHub provider, useful for mirrors and custom gateways
+ * @param url original URL
+ * @example
+ * (url) => {
+ *   url.hostname = 'mirror.ghproxy.com'
+ *   url.pathname = 'https://github.com' + url.pathname
+ *   return url
+ * }
+ */
 export type URLHandler = (url: URL) => Promisable<URL | string | undefined | null>
