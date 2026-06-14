@@ -30,6 +30,7 @@ export async function downloadUtil<T>(
     resolve: (data: T) => void,
     reject: (e: any) => void,
   ) => void,
+  signal?: AbortSignal,
 ): Promise<T> {
   await app.whenReady()
   return new Promise((resolve, reject) => {
@@ -61,6 +62,13 @@ export async function downloadUtil<T>(
       redirect: 'follow',
       url,
     })
+    if (signal) {
+      if (signal.aborted) {
+        reject(new Error('Aborted'))
+        return
+      }
+      signal.addEventListener('abort', () => request.abort(), { once: true })
+    }
     request.on('response', (resp) => {
       resp.on('aborted', () => reject(new Error('Aborted')))
       resp.on('error', reject)
@@ -104,19 +112,16 @@ export async function defaultDownloadText<T>(
   signal: AbortSignal,
   resolveData: ResolveDataFn,
 ): Promise<T> {
-  return await downloadUtil<T>(url, headers, (request, resp, resolve, reject) => {
-    let data = ''
-    resp.on('data', (chunk) => (data += chunk))
-    resp.on('end', () => resolveData(data, resolve, reject))
-    signal.addEventListener(
-      'abort',
-      () => {
-        request.abort()
-        data = null!
-      },
-      { once: true },
-    )
-  })
+  return await downloadUtil<T>(
+    url,
+    headers,
+    (request, resp, resolve, reject) => {
+      let data = ''
+      resp.on('data', (chunk) => (data += chunk))
+      resp.on('end', () => resolveData(data, resolve, reject))
+    },
+    signal,
+  )
 }
 /**
  * Default function to download json and parse to UpdateJson
@@ -159,32 +164,28 @@ export async function defaultDownloadAsar(
 ): Promise<Buffer> {
   let transferred = 0
   let time = Date.now()
-  return await downloadUtil<Buffer>(url, headers, (request, resp, resolve) => {
-    const total = +getHeader(resp.headers, 'content-length') || -1
-    let data: Buffer[] = []
-    resp.on('data', (chunk) => {
-      const delta = chunk.length
-      transferred += delta
-      const current = Date.now()
-      onDownloading?.({
-        bps: delta / (current - time),
-        delta,
-        percent: total > 0 ? +(transferred / total).toFixed(2) * 100 : -1,
-        total,
-        transferred,
+  return await downloadUtil<Buffer>(
+    url,
+    headers,
+    (_request, resp, resolve) => {
+      const total = +getHeader(resp.headers, 'content-length') || -1
+      let data: Buffer[] = []
+      resp.on('data', (chunk) => {
+        const delta = chunk.length
+        transferred += delta
+        const current = Date.now()
+        onDownloading?.({
+          bps: (delta / Math.max(current - time, 1)) * 1000,
+          delta,
+          percent: total > 0 ? +(transferred / total).toFixed(2) * 100 : -1,
+          total,
+          transferred,
+        })
+        time = current
+        data.push(chunk)
       })
-      time = current
-      data.push(chunk)
-    })
-    resp.on('end', () => resolve(Buffer.concat(data)))
-    signal.addEventListener(
-      'abort',
-      () => {
-        request.abort()
-        data.length = 0
-        data = null!
-      },
-      { once: true },
-    )
-  })
+      resp.on('end', () => resolve(Buffer.concat(data)))
+    },
+    signal,
+  )
 }
