@@ -83,6 +83,8 @@ pnpm add -D electron-incremental-update @electron/asar @babel/core
 yarn add -D electron-incremental-update @electron/asar @babel/core
 ```
 
+> Upgrading from `3.0.0-beta.x`? See [MIGRATION.md](./MIGRATION.md).
+
 ## Quick Start
 
 Recommended project layout:
@@ -202,7 +204,7 @@ export default defineElectronConfig({
     minimumVersion: '0.0.0',
     paths: {
       asarOutputPath: 'release/my-app.asar',
-      gzipPath: 'release/my-app-1.0.0.asar.gz',
+      compressedPath: 'release/my-app-1.0.0.asar.br',
       versionPath: 'release/version.json',
     },
   },
@@ -260,7 +262,7 @@ Common options:
 Default output paths:
 
 - `updater.paths.asarOutputPath`: `release/${app.name}.asar`
-- `updater.paths.gzipPath`: `release/${app.name}-${version}.asar.gz`
+- `updater.paths.compressedPath`: `release/${app.name}-${version}.asar.br`
 - `updater.paths.versionPath`: `release/version.json`
 - `updater.paths.entryOutDir`: `dist-entry`
 - `updater.paths.electronDistPath`: `dist-electron`
@@ -374,8 +376,7 @@ Events:
 
 ### GitHub
 
-GitHub providers read update metadata from a repository or release and download the generated
-`{name}-{version}.asar.gz` artifact from GitHub Releases.
+Read update metadata from a GitHub repository and download `{name}-{version}.asar.br` from Releases.
 
 #### Default
 
@@ -394,7 +395,7 @@ const provider = new GitHubProvider({
 Default URLs:
 
 - update JSON: `https://github.com/{user}/{repo}/raw/{branch}/{versionPath}`
-- asar: `https://github.com/{user}/{repo}/releases/download/v{version}/{name}-{version}.asar.gz`
+- asar: `https://github.com/{user}/{repo}/releases/download/v{version}/{name}-{version}.asar.br`
 
 #### Atom
 
@@ -441,12 +442,9 @@ const provider = new GitHubProvider({
 
 ### Local
 
-Local updates are for development and manual update-flow testing. They let you test
-`checkForUpdates()`, download progress, `update-downloaded`, and restart/install behavior without
-publishing a GitHub release.
+Test update flows without publishing a GitHub release.
 
-Most projects should use the Vite `localDevUpdate` option instead of manually creating a
-`LocalDevProvider`.
+Prefer `localDevUpdate: true` in the Vite plugin over manual `LocalDevProvider`.
 
 #### Recommended Setup
 
@@ -476,15 +474,15 @@ export default defineConfig({
 
 When `localDevUpdate` is enabled in development:
 
-- the Vite plugin creates a local update package before Electron starts
-- `createElectronApp()` auto-configures `LocalDevProvider` when no explicit `updater.provider` is set
-- dev-only `forceUpdate` is enabled so update checks are not skipped in development
-- production builds keep the normal provider and signature behavior
+- Vite plugin creates a local update package before Electron starts
+- `createElectronApp()` auto-configures `LocalDevProvider` (unless `updater.provider` is set explicitly)
+- `forceUpdate` is enabled so update checks are never skipped
+- Production builds keep the normal provider and signature behavior
 
 The default generated files are:
 
 - `release/local-update/release/version.json`
-- `release/local-update/{name}-{version}.asar.gz`
+- `release/local-update/{name}-{version}.asar.br`
 - `DEV.asar`
 - `DEV.asar.tmp` after `downloadUpdate()`
 
@@ -536,7 +534,7 @@ const provider = new LocalDevProvider({
 It reads:
 
 - `{baseDir}/{versionPath}`
-- `{baseDir}/{name}-{version}.asar.gz`
+- `{baseDir}/{name}-{version}.asar.br`
 
 #### Testing The Local Flow
 
@@ -567,7 +565,7 @@ local provider setup is skipped.
 The Vite plugin can generate:
 
 - `${app.name}.asar`
-- `${app.name}-${version}.asar.gz`
+- `${app.name}-${version}.asar.br`
 - `version.json`
 
 Default `version.json` shape:
@@ -588,6 +586,15 @@ Default `version.json` shape:
 Stable releases update both the top-level fields and `beta`. Prerelease versions update only `beta`.
 
 Set `buildVersionJson: true` if you need metadata during non-CI builds.
+
+> [!NOTE]
+> The **default** version parser supports `major.minor.patch[-prerelease[.number]]` (e.g. `1.0.0-beta.1`).
+> Build metadata (`+build`) and complex semver prerelease identifiers (e.g. `1.0.0-beta.1.2`)
+> are not supported by default.
+>
+> To use full semver or a custom version scheme, override
+> [`provider.isLowerVersion`](#providers) with your own comparator
+> (e.g. `semver.lt` from the `semver` package).
 
 ## Native Modules
 
@@ -794,9 +801,9 @@ import {
   beautifyDevTools,
   defaultIsLowerVersion,
   defaultSignature,
-  defaultUnzipFile,
+  defaultDecompressFile,
   defaultVerifySignature,
-  defaultZipFile,
+  defaultCompressFile,
   getAppVersion,
   getEntryVersion,
   getPathFromAppNameAsar,

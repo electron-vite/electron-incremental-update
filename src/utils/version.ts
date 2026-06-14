@@ -29,6 +29,11 @@ interface PrereleaseIdentifier {
 const REG_VERSION = /^(\d+)\.(\d+)\.(\d+)(?:-([a-z0-9]+)(?:\.(\d+))?)?$/i
 /**
  * Parse version string to {@link Version}, like `0.2.0-beta.1`
+ *
+ * **Supported format**: `major.minor.patch[-stage[.stageVersion]]`
+ *
+ * Build metadata (`+build`) and complex semver prerelease identifiers
+ * (e.g. `1.0.0-beta.1.2`) are not supported yet.
  * @param version version string
  */
 export function parseVersion(version: string): Version {
