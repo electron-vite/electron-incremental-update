@@ -45,12 +45,12 @@ class MockProvider implements IProvider {
     version: '1.1.0',
     minimumVersion: '1.0.0',
     signature: 'stable-signature',
-    url: 'https://example.com/test-app-1.1.0.asar.gz',
+    url: 'https://example.com/test-app-1.1.0.asar.br',
     beta: {
       version: '1.2.0-beta.1',
       minimumVersion: '1.0.0',
       signature: 'beta-signature',
-      url: 'https://example.com/test-app-1.2.0-beta.1.asar.gz',
+      url: 'https://example.com/test-app-1.2.0-beta.1.asar.br',
     },
   }
 
@@ -79,11 +79,11 @@ class MockProvider implements IProvider {
     return oldVer < newVer
   }
 
-  public async unzipFile(): Promise<Buffer> {
+  public async decompressFile(): Promise<Buffer> {
     return this.unzippedBuffer
   }
 
-  public verifySignaure(): boolean {
+  public verifySignature(): boolean {
     return this.verifyResult
   }
 }

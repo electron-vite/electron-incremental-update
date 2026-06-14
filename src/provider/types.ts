@@ -65,7 +65,7 @@ export interface IProvider {
    * Function to decompress file using brotli
    * @param buffer compressed file buffer
    */
-  unzipFile: (buffer: Buffer) => Promise<Buffer>
+  decompressFile: (buffer: Buffer) => Promise<Buffer>
   /**
    * Verify asar signature,
    * if signature is valid, returns the version, otherwise returns `undefined`
@@ -74,7 +74,7 @@ export interface IProvider {
    * @param signature signature
    * @param cert certificate
    */
-  verifySignaure: (
+  verifySignature: (
     buffer: Buffer,
     version: string,
     signature: string,

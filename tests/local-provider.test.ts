@@ -57,12 +57,12 @@ describe('LocalDevProvider', () => {
       version: '1.2.3',
       minimumVersion: '1.0.0',
       signature: 'stable-signature',
-      url: join(baseDir, 'test-1.2.3.asar.gz'),
+      url: join(baseDir, 'test-1.2.3.asar.br'),
       beta: {
         version: '1.3.0-beta.1',
         minimumVersion: '1.0.0',
         signature: 'beta-signature',
-        url: join(baseDir, 'test-1.3.0-beta.1.asar.gz'),
+        url: join(baseDir, 'test-1.3.0-beta.1.asar.br'),
       },
     })
   })
@@ -73,14 +73,14 @@ describe('LocalDevProvider', () => {
     const provider = await createProvider(baseDir, { chunkDelay: 0, chunkSize: 8 })
     const progressEvents: DownloadingInfo[] = []
 
-    await writeFile(join(baseDir, 'test-1.2.3.asar.gz'), fileBuffer)
+    await writeFile(join(baseDir, 'test-1.2.3.asar.br'), fileBuffer)
 
     const result = await provider.downloadAsar(
       {
         version: '1.2.3',
         minimumVersion: '1.0.0',
         signature: 'signature',
-        url: join(baseDir, 'test-1.2.3.asar.gz'),
+        url: join(baseDir, 'test-1.2.3.asar.br'),
       },
       new AbortController().signal,
       (info) => progressEvents.push(info),
@@ -101,7 +101,7 @@ describe('LocalDevProvider', () => {
     const provider = await createProvider(baseDir)
 
     await expect(
-      provider.verifySignaure(Buffer.from('invalid'), '1.2.3', 'invalid', 'invalid'),
+      provider.verifySignature(Buffer.from('invalid'), '1.2.3', 'invalid', 'invalid'),
     ).resolves.toBe(true)
   })
 

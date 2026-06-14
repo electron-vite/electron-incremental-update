@@ -291,7 +291,7 @@ export class Updater<
 
     // verify update file
     this.logger?.debug('Validation start')
-    if (!(await this.provider!.verifySignaure(buffer, _version, _sig, this.CERT))) {
+    if (!(await this.provider!.verifySignature(buffer, _version, _sig, this.CERT))) {
       return emitError('ERR_VALIDATE', 'Invalid update asar file')
     }
     this.logger?.debug('Validation end')
@@ -300,7 +300,7 @@ export class Updater<
       this.tmpFilePath = `${getPathFromAppNameAsar()}.tmp`
       // write file to tmp path
       this.logger?.debug(`Install to ${this.tmpFilePath}`)
-      fs.writeFileSync(this.tmpFilePath, await this.provider!.unzipFile(buffer))
+      fs.writeFileSync(this.tmpFilePath, await this.provider!.decompressFile(buffer))
 
       this.logger?.info(`Download success, version: ${_version}`)
       this.info = undefined

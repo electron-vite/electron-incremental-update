@@ -27,7 +27,7 @@ export interface LocalDevProviderOptions {
 /**
  * Update Provider for local development
  * - download update json from `{baseDir}/{versionPath}`
- * - download update asar from `{baseDir}/{name}-{version}.asar.gz`
+ * - download update asar from `{baseDir}/{name}-{version}.asar.br`
  *
  * This provider is useful for testing updates during development without
  * needing to deploy to a remote server.
@@ -35,7 +35,7 @@ export interface LocalDevProviderOptions {
  */
 export class LocalDevProvider extends BaseProvider {
   public override name = 'LocalDevProvider'
-  public override verifySignaure: IProvider['verifySignaure']
+  public override verifySignature: IProvider['verifySignature']
   private readonly options: Required<LocalDevProviderOptions>
 
   constructor(options: LocalDevProviderOptions) {
@@ -53,7 +53,7 @@ export class LocalDevProvider extends BaseProvider {
     }
 
     this.options = resolvedOptions
-    this.verifySignaure = async function verifySignaure(): Promise<boolean> {
+    this.verifySignature = async function verifySignature(): Promise<boolean> {
       return true
     }
   }
@@ -71,7 +71,7 @@ export class LocalDevProvider extends BaseProvider {
     const { beta, version, ...info } = await this.readJSON(versionPath)
 
     const getURL = (ver: string): string =>
-      path.join(this.options.baseDir, `${name}-${ver}.asar.gz`)
+      path.join(this.options.baseDir, `${name}-${ver}.asar.br`)
 
     return {
       ...info,
