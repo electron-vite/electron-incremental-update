@@ -61,7 +61,7 @@
     "test:dev": "bun test --watch",
     "format": "oxfmt",
     "lint": "oxlint --fix",
-    "qa": "oxlint --fix && oxfmt && tsc --noEmit"
+    "qa": "bun run lint && bun run format && tsc --noEmit"
   },
   "dependencies": {
     "@babel/plugin-transform-arrow-functions": "^7.29.7",
@@ -72,14 +72,14 @@
   },
   "devDependencies": {
     "@subf/config": "^0.2.1",
-    "@tsdown/css": "^0.22.1",
+    "@tsdown/css": "^0.22.2",
     "@types/babel__core": "^7.20.5",
     "@types/bun": "^1.3.14",
     "bumpp": "^11.1.0",
     "electron": "42.2.0",
-    "oxfmt": "^0.53.0",
-    "oxlint": "^1.68.0",
-    "tsdown": "^0.22.1",
+    "oxfmt": "^0.54.0",
+    "oxlint": "^1.69.0",
+    "tsdown": "^0.22.2",
     "typescript": "^6.0.3",
     "vite": "^8.0.16"
   },

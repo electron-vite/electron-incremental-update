@@ -20,7 +20,7 @@ Lightweight incremental update tools for Electron applications built with Vite. 
     - [Testing The Local Flow](#testing-the-local-flow)
   - [Update Artifacts](#update-artifacts)
   - [Native Modules](#native-modules)
-      - [Result in app.asar](#result-in-appasar)
+    - [Result in app.asar](#result-in-appasar)
   - [Bytecode Protection](#bytecode-protection)
   - [Development Bundling](#development-bundling)
   - [Utilities](#utilities)
@@ -474,7 +474,7 @@ module.exports = {
 }
 ```
 
-#### Result in app.asar
+### Result in app.asar
 
 Before: Redundant 🤮
 
