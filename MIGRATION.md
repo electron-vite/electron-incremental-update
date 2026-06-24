@@ -33,6 +33,21 @@ Re-upload GitHub Release artifacts with `.asar.br`, rename local files.
   })
 ```
 
+## `notBundle` removed
+
+`notBundle` and `useNotBundle` were removed with `vite-plugin-electron` 1.1.0 in v3.0.0. Use `bundleDeps` instead. To keep the former development-only externalization behavior:
+
+```diff
+  electronWithUpdater({
+-   notBundle: true,
++   bundleDeps: { dev: { exclude: true } },
+  })
+```
+
+Use `bundleDeps: true` to bundle all dependencies, `bundleDeps: false` to externalize all
+dependencies, or `bundleDeps: 'auto'` to bundle package.json dev dependencies while externalizing
+package.json dependencies.
+
 ## Custom provider
 
 ```diff

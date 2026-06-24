@@ -1,4 +1,3 @@
-import type { RolldownOrRollupOptions } from 'vite-plugin-electron'
 import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
 
 import type { Promisable } from '../utils/type'
@@ -37,7 +36,12 @@ export interface CommonBuildOption {
   }
 }
 
-export interface ElectronWithUpdaterOptions {
+export interface ElectronWithUpdaterOptions extends Pick<MultiEnvElectronOptions, 'bundleDeps'> {
+  /**
+   * `electron-incremental-update` and its subpath imports are always bundled,
+   * regardless of this dependency policy.
+   */
+  bundleDeps?: MultiEnvElectronOptions['bundleDeps']
   /**
    * Whether to generate sourcemap
    * @default !isBuild || !!process.env.VSCODE_DEBUG
@@ -56,17 +60,6 @@ export interface ElectronWithUpdaterOptions {
    * Only main process by default, if you want to use in preload script, please use `electronWithUpdater({ bytecode: { enablePreload: true } })` and set `sandbox: false` when creating window
    */
   bytecode?: boolean | BytecodeOptions
-  /**
-   * Faster dev startup by externalize all node modules in entry and main.
-   *
-   * Only works in development (`isBuild === false`).
-   * @default true
-   */
-  notBundle?: boolean | RolldownOrRollupOptions['external']
-  /**
-   * @deprecated use `notBundle` instead
-   */
-  useNotBundle?: boolean
   /**
    * Whether to generate version json
    * @default isCI

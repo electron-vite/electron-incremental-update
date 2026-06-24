@@ -242,7 +242,8 @@ Common options overview:
 - `sourcemap`: defaults to development or `VSCODE_DEBUG`.
 - `minify`: defaults to production builds.
 - `bytecode`: `true` or bytecode options.
-- `notBundle`: externalizes Node modules in development. Defaults to `true`.
+- `bundleDeps`: controls dependency bundling. Defaults to Vite's server-environment behavior.
+  `electron-incremental-update` is always bundled.
 - `external`: additional Vite/Rolldown externals. Use `true` to externalize `dependencies`.
 - `buildVersionJson`: generates update JSON. Defaults to CI only.
 - `localDevUpdate`: generates and serves a local update package during dev startup. Use `true`
@@ -565,13 +566,21 @@ Notes:
 - To include preload scripts, use `bytecode: { enablePreload: true }`.
 - If preload bytecode is enabled, create the `BrowserWindow` with `sandbox: false`.
 
-## Development Bundling
+## Dependency Bundling
 
-`notBundle` is enabled by default in development. It externalizes Node modules in entry and main builds to improve startup speed.
+`bundleDeps` controls dependency handling for entry, main, and preload environments. It defaults to
+`'vite'`, which preserves Vite's server-environment behavior.
 
 ```ts
 electronWithUpdater({
-  notBundle: false,
+  bundleDeps: {
+    dev: {
+      exclude: true,
+    },
+    build: {
+      include: ['some-dependency'],
+    },
+  },
   entry: {
     files: './electron/entry.ts',
   },
@@ -580,6 +589,12 @@ electronWithUpdater({
   },
 })
 ```
+
+Use `'auto'` to bundle all dependencies except package.json dependencies, `true` to bundle all
+dependencies, or `false` to externalize all dependencies. `both` applies a policy in both modes
+and is merged with the active `dev` or `build` policy. `include` maps to Vite's
+`resolve.noExternal`; `exclude` maps to `resolve.external`. `electron-incremental-update` and its
+subpath imports are always bundled.
 
 ## Utilities
 

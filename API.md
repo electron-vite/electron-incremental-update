@@ -1116,13 +1116,14 @@ export interface CommonBuildOption {
 
 #### `ElectronWithUpdaterOptions`
 
+*Extends:* [`Pick`](#pick)
+
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
+| `bundleDeps?` | `MultiEnvElectronOptions['bundleDeps']` | — | `electron-incremental-update` and its subpath imports are always bundled, regardless of this dependency policy. |
 | `sourcemap?` | `boolean` | `!isBuild || !!process.env.VSCODE_DEBUG` | Whether to generate sourcemap |
 | `minify?` | `boolean` | `isBuild` | Whether to minify the code |
 | `bytecode?` | `boolean | BytecodeOptions` | — | Whether to generate bytecode  **Only support CommonJS**  Only main process by default, if you want to use in preload script, please use `electronWithUpdater({ bytecode: { enablePreload: true } })` and set `sandbox: false` when creating window |
-| `notBundle?` | `boolean | RolldownOrRollupOptions['external']` | `true` | Faster dev startup by externalize all node modules in entry and main.  Only works in development (`isBuild === false`). |
-| `useNotBundle?` | `boolean` | — | @deprecated use `notBundle` instead |
 | `buildVersionJson?` | `boolean` | `isCI` | Whether to generate version json |
 | `localDevUpdate?` | `boolean | LocalDevUpdateOptions` | `false` | Generate and serve a local update package during dev startup.  This is useful for testing update checks, simulated download progress, and restart/install behavior without publishing a remote release. |
 | `external?` | `(string | RegExp)[] | boolean` | — | Addtional `external` option in `build.rolldownOptions`,  If equals `true`, external `dependencies` in `package.json` by default |
@@ -1132,7 +1133,12 @@ export interface CommonBuildOption {
 | `updater?` | `UpdaterOptions` | — | Updater options |
 
 ```ts
-export interface ElectronWithUpdaterOptions {
+export interface ElectronWithUpdaterOptions extends Pick<MultiEnvElectronOptions, 'bundleDeps'> {
+  /**
+   * `electron-incremental-update` and its subpath imports are always bundled,
+   * regardless of this dependency policy.
+   */
+  bundleDeps?: MultiEnvElectronOptions['bundleDeps']
   /**
    * Whether to generate sourcemap
    * @default !isBuild || !!process.env.VSCODE_DEBUG
@@ -1151,17 +1157,6 @@ export interface ElectronWithUpdaterOptions {
    * Only main process by default, if you want to use in preload script, please use `electronWithUpdater({ bytecode: { enablePreload: true } })` and set `sandbox: false` when creating window
    */
   bytecode?: boolean | BytecodeOptions
-  /**
-   * Faster dev startup by externalize all node modules in entry and main.
-   *
-   * Only works in development (`isBuild === false`).
-   * @default true
-   */
-  notBundle?: boolean | RolldownOrRollupOptions['external']
-  /**
-   * @deprecated use `notBundle` instead
-   */
-  useNotBundle?: boolean
   /**
    * Whether to generate version json
    * @default isCI

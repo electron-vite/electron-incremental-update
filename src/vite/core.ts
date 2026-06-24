@@ -5,10 +5,7 @@ import { isCI } from 'ci-info'
 import type { EnvironmentOptions, Plugin } from 'vite'
 import { mergeConfig, normalizePath } from 'vite'
 import { electronPluginFactory } from 'vite-plugin-electron/multi-env'
-import type {
-  MultiEnvElectronOptions,
-  ElectronFactoryContext,
-} from 'vite-plugin-electron/multi-env'
+import type { ElectronFactoryContext, MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
 import { esmShim } from 'vite-plugin-electron/plugin'
 
 import { defaultCompressFile } from '../utils/compress'
@@ -32,6 +29,31 @@ import type {
 import { buildAsar, buildUpdateJson } from './utils/build'
 import { copyAndSkipIfExist } from './utils/file'
 import { parseKeys } from './utils/key'
+
+const PACKAGE_NAME = 'electron-incremental-update'
+type BundleDepsOptions = NonNullable<
+  Exclude<MultiEnvElectronOptions['bundleDeps'], string | boolean>
+>
+
+const ALWAYS_BUNDLE_DEPS = {
+  both: {
+    include: [PACKAGE_NAME],
+  }
+} satisfies BundleDepsOptions
+
+function resolveBundleDeps(
+  bundleDeps: MultiEnvElectronOptions['bundleDeps'],
+): MultiEnvElectronOptions['bundleDeps'] {
+  if (bundleDeps === undefined || bundleDeps === 'vite') {
+    return ALWAYS_BUNDLE_DEPS
+  }
+
+  if (typeof bundleDeps === 'object') {
+    return mergeConfig<BundleDepsOptions, BundleDepsOptions>(ALWAYS_BUNDLE_DEPS, bundleDeps)
+  }
+
+  return bundleDeps
+}
 
 async function resolveUpdaterOption(
   root: string,
@@ -141,12 +163,13 @@ async function createElectronOptions(
     sourcemap = context.isDev || !!process.env.VSCODE_DEBUG,
     minify = !context.isDev,
     buildVersionJson,
-    notBundle = true,
+    bundleDeps: userBundleDeps,
     external,
     updater,
     bytecode,
     localDevUpdate,
   } = options
+  const bundleDeps = resolveBundleDeps(userBundleDeps)
 
   const pkg = context.packageJson
   if (!pkg || !pkg.version || !pkg.name || !pkg.main) {
@@ -241,7 +264,7 @@ async function createElectronOptions(
       name: 'main',
       input: main.files,
       onstart: mainOnstart,
-      notBundle,
+      bundleDeps,
       plugins: [
         isESM && esmShim(),
         bytecodeOptions && bytecodePlugin('main', minify, isESM, bytecodeOptions),
@@ -276,7 +299,7 @@ async function createElectronOptions(
         // Notify the Renderer-Process to reload the page when the Preload-Scripts build is complete
         args.reload()
       },
-      notBundle,
+      bundleDeps,
       input: preload.files,
       plugins: [
         isESM && esmShim(),
@@ -318,7 +341,7 @@ async function createElectronOptions(
         await args.startup()
       }
     },
-    notBundle,
+    bundleDeps,
     plugins: [
       isESM && esmShim(),
       bytecodeOptions && bytecodePlugin('entry', minify, isESM, bytecodeOptions),
