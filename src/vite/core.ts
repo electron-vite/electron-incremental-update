@@ -8,6 +8,7 @@ import { electronPluginFactory } from 'vite-plugin-electron/multi-env'
 import type { ElectronFactoryContext, MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
 import { esmShim } from 'vite-plugin-electron/plugin'
 
+import { name as PKG_NAME } from '../../package.json'
 import { defaultCompressFile } from '../utils/compress'
 import { defaultSignature } from '../utils/crypto'
 import { defaultVersionJsonGenerator } from '../utils/version'
@@ -275,6 +276,7 @@ async function createElectronOptions(
             sourcemap,
             minify,
             outDir: `${buildAsarOption.electronDistPath}/main`,
+            reportCompressedSize: false,
             rolldownOptions: {
               external: finalExternal,
               output: {
@@ -308,8 +310,9 @@ async function createElectronOptions(
       options: mergeConfig<EnvironmentOptions, EnvironmentOptions>(
         {
           build: {
-            sourcemap: sourcemap ? 'inline' : undefined,
             minify,
+            sourcemap: sourcemap ? 'inline' : undefined,
+            reportCompressedSize: false,
             outDir: `${buildAsarOption.electronDistPath}/preload`,
             rolldownOptions: {
               external: finalExternal,
@@ -389,6 +392,7 @@ async function createElectronOptions(
           sourcemap,
           minify,
           outDir: entryOutDir,
+          reportCompressedSize: false,
           rolldownOptions: {
             external: finalExternal,
             output: {
