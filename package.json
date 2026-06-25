@@ -56,12 +56,10 @@
     "build": "tsdown",
     "play": "bun run build && vite",
     "play:build": "vite build",
-    "release": "bun run format && bun run lint && bun run test && bun run build && bumpp --all",
+    "release": "bun run qa && bun run test && bun run build && bumpp --all",
     "test": "bun test --preload ./tests/setup.ts",
     "test:dev": "bun test --watch",
-    "format": "oxfmt",
-    "lint": "oxlint --fix",
-    "qa": "bun run lint && bun run format && tsc --noEmit"
+    "qa": "oxlint --fix && oxfmt && tsc --noEmit"
   },
   "dependencies": {
     "@babel/plugin-transform-arrow-functions": "^7.29.7",
