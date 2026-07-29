@@ -3,22 +3,11 @@ import path from 'node:path'
 
 import type { Plugin } from 'rolldown'
 
-interface MemberProp {
-  name: string
-  type?: string
-  jsdoc: string
-  optional: boolean
-  defaultValue?: string
-}
-
 interface ApiSymbol {
-  name: string
+  name: string | undefined
   kind: 'function' | 'class' | 'interface' | 'type' | 'const'
   jsdoc: string
   signature: string
-  paramTypes?: Record<string, string>
-  members?: MemberProp[]
-  extendsTypes?: string[]
 }
 
 interface ModuleExports {
@@ -110,101 +99,11 @@ function findJSDocBefore(code: string, position: number): string | null {
   return text || null
 }
 
-interface FormattedJSDoc {
-  description: string
-  example: string | null
-}
-
-function formatInlineTags(text: string): string {
-  // Convert {@link Target} to [\`Target\`](#target)
-  return text.replace(/\{@link\s+([^}]+)\}/g, (_, target) => {
-    const slug = target.trim().toLowerCase()
-    return `[\`${target.trim()}\`](#${slug})`
-  })
-}
-
-function formatJSDoc(raw: string, paramTypes?: Record<string, string>): FormattedJSDoc {
-  const parts: string[] = []
-  const params: { name: string; type?: string; desc: string }[] = []
-  let example: string | null = null
-  let remaining = raw
-
-  // Extract the main description (everything before the first @tag), keep line breaks
-  const firstTag = remaining.search(/@\w+/)
-  if (firstTag > 0) {
-    parts.push(
-      formatInlineTags(
-        remaining
-          .slice(0, firstTag)
-          .replace(/\n{2,}/g, '\n')
-          .trim(),
-      ),
-    )
-    remaining = remaining.slice(firstTag)
-  } else if (firstTag === -1) {
-    return {
-      description: formatInlineTags(remaining.replace(/\n{2,}/g, '\n').trim()),
-      example: null,
-    }
+function formatJSDocComment(jsdoc: string): string {
+  if (!jsdoc) {
+    return ''
   }
-
-  // Extract @param, @example, @returns, @default, etc. (not @link — inline tag)
-  const tags = remaining.split(/(?=\s*@(?!link)\w+)/g)
-  for (const tag of tags) {
-    const trimmed = tag.trim()
-    if (!trimmed) {
-      continue
-    }
-    if (trimmed.startsWith('@example')) {
-      example = trimmed.replace(/^@example\s*/, '').trim()
-    } else if (trimmed.startsWith('@param')) {
-      const content = trimmed.replace(/^@param\s*/, '')
-      const spaceIdx = content.indexOf(' ')
-      const name = spaceIdx > 0 ? content.slice(0, spaceIdx) : content
-      const desc =
-        spaceIdx > 0
-          ? formatInlineTags(
-              content
-                .slice(spaceIdx + 1)
-                .replace(/\n/g, ' ')
-                .replace(/^-\s*/, '')
-                .trim(),
-            )
-          : ''
-      params.push({ name, type: paramTypes?.[name], desc })
-    } else if (trimmed.startsWith('@returns') || trimmed.startsWith('@return')) {
-      parts.push(`- ${formatInlineTags(trimmed.replace(/\n/g, ' ').trim())}`)
-    } else if (trimmed.startsWith('@default')) {
-      parts.push(`- ${formatInlineTags(trimmed.replace(/\n/g, ' ').trim())}`)
-    } else if (trimmed.startsWith('@see')) {
-      const see = trimmed.replace(/^@see\s*/, '').trim()
-      parts.push(`*See also:* ${formatInlineTags(see)}`)
-    } else {
-      // Handle {@link ...} inline tags in orphan text, and strip stray @link prefixes
-      parts.push(formatInlineTags(trimmed.replace(/^@link\s*/, '')))
-    }
-  }
-
-  // Render params as table
-  if (params.length > 0) {
-    parts.push('')
-    const hasTypes = params.some((p) => p.type)
-    if (hasTypes) {
-      parts.push('| Parameter | Type | Description |')
-      parts.push('|-----------|------|-------------|')
-      for (const p of params) {
-        parts.push(`| \`${p.name}\` | \`${p.type || ''}\` | ${p.desc} |`)
-      }
-    } else {
-      parts.push('| Parameter | Description |')
-      parts.push('|-----------|-------------|')
-      for (const p of params) {
-        parts.push(`| \`${p.name}\` | ${p.desc} |`)
-      }
-    }
-  }
-
-  return { description: parts.join('\n'), example }
+  return ['/**', ...jsdoc.split('\n').map((line) => (line ? ` * ${line}` : ' *')), ' */'].join('\n')
 }
 
 function getSignatureSource(code: string, exportNode: any): string {
@@ -240,7 +139,6 @@ function extractExports(code: string, ast: any): ApiSymbol[] {
     let name: string | undefined
     let kind: ApiSymbol['kind'] = 'function'
     const signature = getSignatureSource(code, exportNode)
-    const extendsTypes = extractExtends(code, decl)
 
     if (decl.type === 'FunctionDeclaration' && decl.id) {
       name = decl.id.name
@@ -251,20 +149,14 @@ function extractExports(code: string, ast: any): ApiSymbol[] {
       name = decl.id.name
       kind = 'interface'
       if (!jsdoc) {
-        const members = extractMembers(code, decl)
-        if (members.length > 0) {
-          symbols.push({ name, kind, jsdoc: '', signature, members, extendsTypes })
-        }
+        symbols.push({ name, kind, jsdoc: '', signature })
         return
       }
     } else if (decl.type === 'TSTypeAliasDeclaration' && decl.id) {
       name = decl.id.name
       kind = 'type'
       if (!jsdoc && decl.typeAnnotation?.type === 'TSTypeLiteral') {
-        const members = extractMembersFromTypeLiteral(code, decl.typeAnnotation)
-        if (members.length > 0) {
-          symbols.push({ name, kind: 'interface', jsdoc: '', signature, members, extendsTypes })
-        }
+        symbols.push({ name, kind: 'interface', jsdoc: '', signature })
         return
       }
     } else if (decl.type === 'VariableDeclaration') {
@@ -287,138 +179,10 @@ function extractExports(code: string, ast: any): ApiSymbol[] {
     }
 
     if (name && jsdoc) {
-      symbols.push({
-        name,
-        kind,
-        jsdoc,
-        signature,
-        paramTypes: extractParamTypes(code, decl),
-        extendsTypes,
-      })
+      symbols.push({ name, kind, jsdoc, signature })
     } else if (name && kind === 'type') {
-      symbols.push({ name, kind, jsdoc: jsdoc || '', signature, extendsTypes })
+      symbols.push({ name, kind, jsdoc: jsdoc || '', signature })
     }
-  }
-
-  function extractExtends(code: string, decl: any): string[] | undefined {
-    const result: string[] = []
-    if (decl.superClass?.id) {
-      result.push(code.slice(decl.superClass.id.start, decl.superClass.id.end))
-    }
-    if (decl.superTypeArguments?.params) {
-      for (const p of decl.superTypeArguments.params) {
-        const typeName = code.slice(p.start, p.end)
-        if (typeName && !result.includes(typeName)) {
-          result.push(typeName)
-        }
-      }
-    }
-    if (decl.extends && Array.isArray(decl.extends)) {
-      for (const ext of decl.extends) {
-        if (ext.expression) {
-          const typeName = code.slice(ext.expression.start, ext.expression.end)
-          if (typeName) {
-            result.push(typeName)
-          }
-        } else if (ext.id) {
-          result.push(code.slice(ext.id.start, ext.id.end))
-        }
-      }
-    }
-    return result.length > 0 ? result : undefined
-  }
-
-  function extractParamTypes(code: string, decl: any): Record<string, string> | undefined {
-    if (!decl.params || !Array.isArray(decl.params)) {
-      return undefined
-    }
-    const types: Record<string, string> = {}
-    for (const param of decl.params) {
-      let paramName: string | undefined
-      let typeSource: string | undefined
-      if (param.type === 'Identifier') {
-        paramName = param.name
-        typeSource = param.typeAnnotation ? getTypeSource(code, param.typeAnnotation) : undefined
-      } else if (param.type === 'AssignmentPattern' && param.left?.type === 'Identifier') {
-        paramName = param.left.name
-        typeSource = param.left.typeAnnotation
-          ? getTypeSource(code, param.left.typeAnnotation)
-          : undefined
-      }
-      if (paramName && typeSource) {
-        types[paramName] = typeSource
-      }
-    }
-    return Object.keys(types).length > 0 ? types : undefined
-  }
-
-  function getTypeSource(code: string, typeAnnotation: any): string {
-    const raw = typeAnnotation.typeAnnotation
-      ? code.slice(typeAnnotation.typeAnnotation.start, typeAnnotation.typeAnnotation.end)
-      : code.slice(typeAnnotation.start, typeAnnotation.end)
-    return raw
-      .replace(/\n/g, ' ')
-      .replace(/\s+/g, ' ')
-      .replace(/\(\s+/g, '(')
-      .replace(/\s+\)/g, ')')
-      .trim()
-  }
-
-  function extractMembers(code: string, decl: any): MemberProp[] {
-    if (!decl.body?.body || !Array.isArray(decl.body.body)) {
-      return []
-    }
-    return extractMembersList(code, decl.body.body)
-  }
-
-  function extractMembersFromTypeLiteral(code: string, typeLiteral: any): MemberProp[] {
-    if (!typeLiteral.members || !Array.isArray(typeLiteral.members)) {
-      return []
-    }
-    return extractMembersList(code, typeLiteral.members)
-  }
-
-  function extractMembersList(code: string, memberList: any[]): MemberProp[] {
-    const members: MemberProp[] = []
-    for (const member of memberList) {
-      const propJsdoc = findJSDocBefore(code, member.start)
-      if (!propJsdoc) {
-        continue
-      }
-      const key = member.key
-      if (!key) {
-        continue
-      }
-      let propName: string | undefined
-      if (key.type === 'Identifier') {
-        propName = key.name
-      } else if (key.type === 'Literal') {
-        propName = String(key.value)
-      }
-      if (!propName) {
-        continue
-      }
-      const optional = !!member.optional
-      const typeSource = member.typeAnnotation
-        ? getTypeSource(code, member.typeAnnotation)
-        : undefined
-      // Extract @default value and remove from jsdoc
-      let defaultValue: string | undefined
-      let cleanJsdoc = propJsdoc
-      const defaultMatch = propJsdoc.match(/@default\s+(.+?)(?:\n|$)/)
-      if (defaultMatch) {
-        defaultValue = defaultMatch[1].trim()
-        cleanJsdoc = propJsdoc.replace(/\s*@default\s+.+?(?:\n|$)/, '')
-      }
-      members.push({
-        name: propName,
-        type: typeSource,
-        jsdoc: formatInlineTags(cleanJsdoc.replace(/\n/g, ' ').trim()),
-        optional,
-        defaultValue,
-      })
-    }
-    return members
   }
 
   function walkNode(node: any): void {
@@ -461,59 +225,14 @@ function generateMarkdownDocs(symbols: ApiSymbol[]): string {
   const lines: string[] = []
 
   for (const sym of symbols) {
-    const { description, example } = formatJSDoc(sym.jsdoc, sym.paramTypes)
     lines.push(`#### \`${sym.name}\``)
     lines.push('')
-    if (description) {
-      lines.push(description)
-      lines.push('')
-    }
-    if (sym.extendsTypes && sym.extendsTypes.length > 0) {
-      const links = sym.extendsTypes.map((t) => `[\`${t}\`](#${t.toLowerCase()})`).join(', ')
-      lines.push(`*Extends:* ${links}`)
-      lines.push('')
-    }
-    if (sym.members && sym.members.length > 0) {
-      const hasTypes = sym.members.some((m) => m.type)
-      const hasDefaults = sym.members.some((m) => m.defaultValue !== undefined)
-      const headers = ['Property']
-      if (hasTypes) {
-        headers.push('Type')
-      }
-      if (hasDefaults) {
-        headers.push('Default')
-      }
-      headers.push('Description')
-      const headerRow = `| ${headers.join(' | ')} |`
-      const sepRow = `|${headers.map((h) => '-'.repeat(h.length + 2)).join('|')}|`
-      lines.push(headerRow)
-      lines.push(sepRow)
-      for (const m of sym.members) {
-        const cells = [`\`${m.name}${m.optional ? '?' : ''}\``]
-        if (hasTypes) {
-          cells.push(`\`${m.type || ''}\``)
-        }
-        if (hasDefaults) {
-          cells.push(m.defaultValue ? `\`${m.defaultValue}\`` : '—')
-        }
-        cells.push(m.jsdoc)
-        lines.push(`| ${cells.join(' | ')} |`)
-      }
-      lines.push('')
-    }
     lines.push('```ts')
+    if (sym.jsdoc) {
+      lines.push(formatJSDocComment(sym.jsdoc))
+    }
     lines.push(sym.signature)
     lines.push('```')
-    if (example) {
-      // Strip existing code fences to avoid nesting
-      const cleanExample = example.replace(/^```\w*\n?/, '').replace(/\n?```\s*$/, '')
-      lines.push('')
-      lines.push('**Example:**')
-      lines.push('')
-      lines.push('```ts')
-      lines.push(cleanExample)
-      lines.push('```')
-    }
     lines.push('')
     lines.push('---')
     lines.push('')
