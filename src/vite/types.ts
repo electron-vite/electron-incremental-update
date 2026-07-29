@@ -1,3 +1,4 @@
+import type { CreateOptions } from '@electron/asar'
 import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
 
 import type { Promisable } from '../utils/type'
@@ -87,6 +88,10 @@ export interface ElectronWithUpdaterOptions extends Pick<MultiEnvElectronOptions
    * To change output directories, use `options.updater.paths.electronDistPath` instead
    */
   entry: {
+    /**
+     * Options passed to `@electron/asar` when creating the app.asar archive
+     */
+    asarOptions?: CreateOptions
     /**
      * By default, all the unbundled modules will be packaged by packager like `electron-builder`.
      * If setup, all the `dependencies` in `package.json` will be bundled by default, and you need
@@ -327,6 +332,7 @@ export interface BuildAsarOptions extends Required<
   >
 > {
   version: string
+  asarOptions?: CreateOptions
   generateCompressedFile: NonNullable<GeneratorOverrideFunctions['generateCompressedFile']>
 }
 

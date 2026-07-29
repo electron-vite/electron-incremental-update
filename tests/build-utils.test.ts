@@ -47,6 +47,25 @@ describe('build utils', () => {
     expect(existsSync(path.join(root, options.compressedPath))).toBe(true)
   })
 
+  it('applies asar options when creating the archive', async () => {
+    const root = await createTempDir()
+    await createBuildInputs(root)
+    await writeFile(path.join(root, 'dist-electron/main/native.node'), 'native module', 'utf-8')
+    const options: BuildAsarOptions = {
+      version: '1.0.0',
+      asarOptions: { unpack: '**/*.node' },
+      asarOutputPath: 'release/test.asar',
+      compressedPath: 'release/test-1.0.0.asar.br',
+      electronDistPath: 'dist-electron',
+      rendererDistPath: 'dist',
+      generateCompressedFile: async (buffer) => buffer,
+    }
+
+    await buildAsar(root, options)
+
+    expect(existsSync(path.join(root, 'release/test.asar.unpacked/main/native.node'))).toBe(true)
+  })
+
   it('creates nested output directories for version json', async () => {
     const root = await createTempDir()
     const versionPath = path.join(root, 'nested/version/release/version.json')

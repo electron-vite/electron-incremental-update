@@ -39,6 +39,7 @@ async function resolveUpdaterOption(
   pkg: PKG,
   options: UpdaterOptions = {},
   resolveSignatureKeys: boolean = true,
+  asarOptions?: ElectronWithUpdaterOptions['entry']['asarOptions'],
 ): Promise<{
   buildAsarOption: BuildAsarOptions
   buildVersionOption: BuildVersionOptions
@@ -86,6 +87,7 @@ async function resolveUpdaterOption(
   return {
     buildAsarOption: {
       version: pkg.version,
+      asarOptions,
       asarOutputPath,
       compressedPath,
       electronDistPath,
@@ -187,6 +189,7 @@ async function createElectronOptions(
     updatePkg,
     updater,
     !resolvedLocalDevUpdate,
+    entry.asarOptions,
   )
 
   const mainFileName = `${resolveEntryName(main.files)}.${isESM ? 'mjs' : 'js'}`

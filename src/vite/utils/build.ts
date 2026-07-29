@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { createPackage } from '@electron/asar'
+import { createPackageWithOptions } from '@electron/asar'
 
 import type { UpdateJSON } from '../../utils/version'
 import { isUpdateJSON } from '../../utils/version'
@@ -19,6 +19,7 @@ export async function buildAsar(
   root: string,
   {
     version,
+    asarOptions,
     asarOutputPath,
     electronDistPath,
     rendererDistPath,
@@ -35,7 +36,7 @@ export async function buildAsar(
   await fs.promises.cp(rendererDistPath, rPath, { recursive: true })
   fs.writeFileSync(path.join(electronDistPath, 'version'), version)
   await fs.promises.mkdir(path.dirname(asarOutputPath), { recursive: true })
-  await createPackage(electronDistPath, asarOutputPath)
+  await createPackageWithOptions(electronDistPath, asarOutputPath, asarOptions ?? {})
   const buf = await generateCompressedFile(fs.readFileSync(asarOutputPath))
   await fs.promises.mkdir(path.dirname(compressedPath), { recursive: true })
   fs.writeFileSync(compressedPath, buf)

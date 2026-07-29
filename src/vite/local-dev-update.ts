@@ -2,7 +2,7 @@ import { copyFile, cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/p
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import { createPackage, extractFile } from '@electron/asar'
+import { createPackageWithOptions, extractFile } from '@electron/asar'
 import type { MultiEnvElectronOptions } from 'vite-plugin-electron/multi-env'
 
 import type { UpdateJSON } from '../utils/version'
@@ -160,7 +160,11 @@ export async function prepareLocalDevUpdateResource({
       recursive: true,
     })
     await writeFile(path.join(stagedElectronDistPath, 'version'), targetVersion, 'utf-8')
-    await createPackage(stagedElectronDistPath, asarPath)
+    await createPackageWithOptions(
+      stagedElectronDistPath,
+      asarPath,
+      buildAsarOption.asarOptions ?? {},
+    )
 
     const compressedBuffer = await buildAsarOption.generateCompressedFile(await readFile(asarPath))
     await writeFile(compressedPath, compressedBuffer)
